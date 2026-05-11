@@ -72,6 +72,15 @@ Some executable names are normalized into friendlier labels such as:
 
 Idle and unknown windows are filtered out of the main dashboard views.
 
+## Known Bugs
+
+A few bugs are known and will be fixed shortly
+
+1. Scrollbar looks... questionable
+2. Sometimes the time achieves negative space time and shows screen time in one hour as more than one hour
+3. Registers sleeping laptop time as screen time
+4. Hover goes back a few hours in the hourly chart
+
 ## Local Data
 
 TrackMLN stores its local files in the app data directory used by Tauri.
@@ -191,3 +200,7 @@ So you do not need to copy that file by hand anymore.
 ## License
 
 No license has been added yet.
+
+---
+
+Made with 💚, Debugged with 😭 by [WTRMLN](github.com/WTRMLNv1)
