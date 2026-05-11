@@ -32,6 +32,27 @@ TrackMLN currently focuses on local tracking and dashboarding.
 - The app is currently Windows-only because the tracking code uses Windows APIs to read the active foreground process.
 - The codebase already contains a `goals` table and tracker-side limit checks, but full goal management is not exposed in the current UI yet.
 
+## Screenshots
+
+<p align="center">
+  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/daily.png" width="700" />
+</p>
+
+<p align="center">
+  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/weekly.png" width="700" />
+</p>
+
+<p align="center">
+  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/settings.png" width="700" />
+</p>
+
+<p align="center">
+  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/installer.png" width="700" />
+</p>
+
+<p align="center">
+  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/mogging%20peppa.jpeg" width="30" />
+</p>
 ## Tech Stack
 
 - Tauri 2
