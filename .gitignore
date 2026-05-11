@@ -1,0 +1,26 @@
+# Python cache and local env files
+__pycache__/
+*.py[cod]
+*$py.class
+.env/
+venv/
+
+# App data and editor folders
+.vs/
+data/
+
+# Root frontend / Tauri build output
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Installer build output and bundled binaries
+installer/node_modules/
+installer/dist/
+installer/src-tauri/target/
+installer/src-tauri/assets/trackmln.exe
+installer/src-tauri/gen/
+
+# Legacy code not part of the current app
+legacy-python/

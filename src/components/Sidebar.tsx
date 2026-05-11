@@ -1,0 +1,40 @@
+const tabs = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "Week" },
+  { id: "settings", label: "Settings" }
+] as const;
+
+type SidebarProps = {
+  activeTab: string;
+  onChange: (tab: "today" | "week" | "settings") => void;
+};
+
+export function Sidebar({ activeTab, onChange }: SidebarProps) {
+  return (
+    <aside className="sidebar">
+      <div className="sidebar__brand">
+        <span className="sidebar__eyebrow">Focus overlay</span>
+        <h1>TrackMLN</h1>
+        <p>Screen time with the old glassy layout, now backed by Rust.</p>
+      </div>
+
+      <nav className="sidebar__nav">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`sidebar__tab ${activeTab === tab.id ? "is-active" : ""}`}
+            onClick={() => onChange(tab.id)}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="sidebar__footer">
+        <span>Base layout</span>
+        <strong>1920 x 1080</strong>
+      </div>
+    </aside>
+  );
+}

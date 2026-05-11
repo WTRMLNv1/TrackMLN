@@ -1,0 +1,27 @@
+{
+  "name": "trackmln-installer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "..\\node_modules\\.bin\\vite.cmd",
+    "build": "..\\node_modules\\.bin\\tsc.cmd && ..\\node_modules\\.bin\\vite.cmd build",
+    "preview": "..\\node_modules\\.bin\\vite.cmd preview",
+    "tauri:dev": "..\\node_modules\\.bin\\tauri.cmd dev",
+    "pretauri:build": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$source = Join-Path .. 'src-tauri\\target\\release\\trackmln-tauri.exe'; $dest = Join-Path 'src-tauri\\assets' 'trackmln.exe'; if (-not (Test-Path $source)) { throw 'Missing main app release binary. Build the main app release first.' }; Copy-Item -LiteralPath $source -Destination $dest -Force\"",
+    "tauri:build": "..\\node_modules\\.bin\\tauri.cmd build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}

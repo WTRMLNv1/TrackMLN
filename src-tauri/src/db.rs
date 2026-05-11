@@ -1,0 +1,364 @@
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+
+use chrono::{DateTime, Duration, Local, LocalResult, NaiveDate, TimeZone};
+use rusqlite::{params, Connection};
+
+use crate::models::{AppTotal, HourlyData, WeekData, WeekDay};
+
+pub type SharedDb = Arc<Mutex<Connection>>;
+
+pub fn default_db_path(base_dir: impl AsRef<Path>) -> PathBuf {
+    base_dir.as_ref().join("trackmln.db")
+}
+
+pub fn open_shared_database(path: impl AsRef<Path>) -> Result<SharedDb, String> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+
+    let connection = Connection::open(path).map_err(|err| err.to_string())?;
+    init_schema(&connection).map_err(|err| err.to_string())?;
+    Ok(Arc::new(Mutex::new(connection)))
+}
+
+pub fn init_schema(connection: &Connection) -> rusqlite::Result<()> {
+    connection.execute_batch(
+        "
+        CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_name TEXT NOT NULL,
+            start INTEGER NOT NULL,
+            end INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_name TEXT NOT NULL UNIQUE,
+            daily_limit INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sessions_start ON sessions(start);
+        CREATE INDEX IF NOT EXISTS idx_sessions_app_name ON sessions(app_name);
+        ",
+    )
+}
+
+pub fn log_session(
+    connection: &Connection,
+    app_name: &str,
+    start: DateTime<Local>,
+    end: DateTime<Local>,
+) -> rusqlite::Result<()> {
+    let duration = end.timestamp() - start.timestamp();
+    if duration < 1 {
+        return Ok(());
+    }
+
+    connection.execute(
+        "INSERT INTO sessions (app_name, start, end) VALUES (?1, ?2, ?3)",
+        params![app_name, start.timestamp(), end.timestamp()],
+    )?;
+    Ok(())
+}
+
+pub fn get_today_totals(connection: &Connection) -> rusqlite::Result<Vec<AppTotal>> {
+    let mut statement = connection.prepare(
+        "
+        SELECT app_name, COALESCE(SUM(end - start), 0) AS total
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') = date('now', 'localtime')
+          AND app_name NOT IN ('Idle', 'Unknown')
+        GROUP BY app_name
+        ORDER BY total DESC, app_name ASC
+        ",
+    )?;
+
+    let totals = statement
+        .query_map([], |row| {
+            Ok(AppTotal {
+                app_name: row.get(0)?,
+                total: row.get(1)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    Ok(totals)
+}
+
+pub fn get_hourly_today(connection: &Connection) -> rusqlite::Result<Vec<HourlyData>> {
+    let mut buckets: Vec<HourlyData> = (0..24)
+        .map(|hour| HourlyData { hour, total: 0 })
+        .collect();
+
+    let mut statement = connection.prepare(
+        "
+        SELECT CAST(strftime('%H', start, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+               COALESCE(SUM(end - start), 0) AS total
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') = date('now', 'localtime')
+          AND app_name NOT IN ('Idle', 'Unknown')
+        GROUP BY hour
+        ORDER BY hour ASC
+        ",
+    )?;
+
+    for row in statement.query_map([], |row| Ok((row.get::<_, u32>(0)?, row.get::<_, i64>(1)?)))? {
+        let (hour, total) = row?;
+        if let Some(bucket) = buckets.get_mut(hour as usize) {
+            bucket.total = total;
+        }
+    }
+
+    Ok(buckets)
+}
+
+pub fn get_goal(connection: &Connection, app_name: &str) -> rusqlite::Result<Option<i64>> {
+    let mut statement =
+        connection.prepare("SELECT daily_limit FROM goals WHERE app_name = ?1 LIMIT 1")?;
+    let mut rows = statement.query(params![app_name])?;
+    match rows.next()? {
+        Some(row) => Ok(Some(row.get(0)?)),
+        None => Ok(None),
+    }
+}
+
+pub fn set_goal(connection: &Connection, app_name: &str, daily_limit: i64) -> rusqlite::Result<()> {
+    connection.execute(
+        "
+        INSERT INTO goals (app_name, daily_limit)
+        VALUES (?1, ?2)
+        ON CONFLICT(app_name) DO UPDATE SET daily_limit = excluded.daily_limit
+        ",
+        params![app_name, daily_limit],
+    )?;
+    Ok(())
+}
+
+pub fn get_today_total_for(connection: &Connection, app_name: &str) -> rusqlite::Result<i64> {
+    connection.query_row(
+        "
+        SELECT COALESCE(SUM(end - start), 0)
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') = date('now', 'localtime')
+          AND app_name = ?1
+        ",
+        params![app_name],
+        |row| row.get(0),
+    )
+}
+
+pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData> {
+    let today = Local::now().date_naive();
+    let week_days: Vec<NaiveDate> = (0..7)
+        .map(|offset| today - Duration::days((6 - offset) as i64))
+        .collect();
+    let week_start = week_days.first().copied().unwrap();
+    let week_end = week_days.last().copied().unwrap();
+    let last_week_start = week_start - Duration::days(7);
+    let last_week_end = week_end - Duration::days(7);
+
+    let mut daily_totals = HashMap::<String, i64>::new();
+    let mut daily_apps = HashMap::<String, Vec<AppTotal>>::new();
+
+    let mut day_totals_statement = connection.prepare(
+        "
+        SELECT date(start, 'unixepoch', 'localtime') AS day,
+               COALESCE(SUM(end - start), 0) AS total
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
+          AND app_name NOT IN ('Idle', 'Unknown')
+        GROUP BY day
+        ORDER BY day ASC
+        ",
+    )?;
+
+    for row in day_totals_statement.query_map(
+        params![week_start.to_string(), week_end.to_string()],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+    )? {
+        let (day, total) = row?;
+        daily_totals.insert(day, total);
+    }
+
+    let mut day_apps_statement = connection.prepare(
+        "
+        SELECT date(start, 'unixepoch', 'localtime') AS day,
+               app_name,
+               COALESCE(SUM(end - start), 0) AS total
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
+          AND app_name NOT IN ('Idle', 'Unknown')
+        GROUP BY day, app_name
+        ORDER BY day ASC, total DESC, app_name ASC
+        ",
+    )?;
+
+    for row in day_apps_statement.query_map(
+        params![week_start.to_string(), week_end.to_string()],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                AppTotal {
+                    app_name: row.get(1)?,
+                    total: row.get(2)?,
+                },
+            ))
+        },
+    )? {
+        let (day, app) = row?;
+        daily_apps.entry(day).or_default().push(app);
+    }
+
+    let mut week_apps_statement = connection.prepare(
+        "
+        SELECT app_name, COALESCE(SUM(end - start), 0) AS total
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
+          AND app_name NOT IN ('Idle', 'Unknown')
+        GROUP BY app_name
+        ORDER BY total DESC, app_name ASC
+        ",
+    )?;
+
+    let week_apps: Vec<AppTotal> = week_apps_statement
+        .query_map(
+            params![week_start.to_string(), week_end.to_string()],
+            |row| {
+                Ok(AppTotal {
+                    app_name: row.get(0)?,
+                    total: row.get(1)?,
+                })
+            },
+        )?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    let previous_week_total: i64 = connection.query_row(
+        "
+        SELECT COALESCE(SUM(end - start), 0)
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
+          AND app_name NOT IN ('Idle', 'Unknown')
+        ",
+        params![last_week_start.to_string(), last_week_end.to_string()],
+        |row| row.get(0),
+    )?;
+
+    let days: Vec<WeekDay> = week_days
+        .iter()
+        .map(|day| {
+            let key = day.to_string();
+            WeekDay {
+                date: key.clone(),
+                total: *daily_totals.get(&key).unwrap_or(&0),
+                apps: daily_apps.remove(&key).unwrap_or_default(),
+            }
+        })
+        .collect();
+
+    let week_total = days.iter().map(|day| day.total).sum::<i64>();
+
+    Ok(WeekData {
+        days,
+        apps: week_apps.clone(),
+        week_total,
+        current_week_average: week_total as f64 / 7.0,
+        previous_week_average: previous_week_total as f64 / 7.0,
+        top_app: week_apps.first().cloned(),
+    })
+}
+
+pub fn unix_to_local(timestamp: i64) -> Option<DateTime<Local>> {
+    Some(DateTime::from_timestamp(timestamp, 0)?.with_timezone(&Local))
+}
+
+pub fn local_date_to_unix(date: NaiveDate, hour: u32, minute: u32, second: u32) -> i64 {
+    let naive = date
+        .and_hms_opt(hour, minute, second)
+        .expect("valid test timestamp");
+    match Local.from_local_datetime(&naive) {
+        LocalResult::Single(dt) => dt.timestamp(),
+        LocalResult::Ambiguous(dt, _) => dt.timestamp(),
+        LocalResult::None => panic!("invalid local datetime for test data"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_connection() -> Connection {
+        let connection = Connection::open_in_memory().expect("in-memory db");
+        init_schema(&connection).expect("schema init");
+        connection
+    }
+
+    #[test]
+    fn ignores_subsecond_sessions() {
+        let connection = test_connection();
+        let start = Local::now();
+        let end = start + Duration::milliseconds(500);
+
+        log_session(&connection, "Chrome", start, end).expect("session write");
+
+        let count: i64 = connection
+            .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))
+            .expect("count rows");
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn computes_today_totals_and_hourly_buckets() {
+        let connection = test_connection();
+        let today = Local::now().date_naive();
+        let start = unix_to_local(local_date_to_unix(today, 9, 0, 0)).unwrap();
+        let end = unix_to_local(local_date_to_unix(today, 9, 30, 0)).unwrap();
+        let start_2 = unix_to_local(local_date_to_unix(today, 10, 0, 0)).unwrap();
+        let end_2 = unix_to_local(local_date_to_unix(today, 10, 15, 0)).unwrap();
+
+        log_session(&connection, "Chrome", start, end).expect("session write");
+        log_session(&connection, "Chrome", start_2, end_2).expect("session write");
+
+        let totals = get_today_totals(&connection).expect("today totals");
+        assert_eq!(
+            totals,
+            vec![AppTotal {
+                app_name: "Chrome".into(),
+                total: 2_700
+            }]
+        );
+
+        let hourly = get_hourly_today(&connection).expect("hourly totals");
+        assert_eq!(hourly[9].total, 1_800);
+        assert_eq!(hourly[10].total, 900);
+    }
+
+    #[test]
+    fn computes_week_dashboard() {
+        let connection = test_connection();
+        let today = Local::now().date_naive();
+        let this_week_day = today - Duration::days(1);
+        let last_week_day = today - Duration::days(8);
+
+        let this_start = unix_to_local(local_date_to_unix(this_week_day, 14, 0, 0)).unwrap();
+        let this_end = unix_to_local(local_date_to_unix(this_week_day, 15, 0, 0)).unwrap();
+        let last_start = unix_to_local(local_date_to_unix(last_week_day, 14, 0, 0)).unwrap();
+        let last_end = unix_to_local(local_date_to_unix(last_week_day, 14, 30, 0)).unwrap();
+
+        log_session(&connection, "VS Code", this_start, this_end).expect("session write");
+        log_session(&connection, "VS Code", last_start, last_end).expect("session write");
+
+        let dashboard = get_week_dashboard(&connection).expect("week dashboard");
+        assert_eq!(dashboard.week_total, 3_600);
+        assert_eq!(dashboard.previous_week_average, 1800.0 / 7.0);
+        assert_eq!(
+            dashboard.top_app,
+            Some(AppTotal {
+                app_name: "VS Code".into(),
+                total: 3_600
+            })
+        );
+    }
+}
