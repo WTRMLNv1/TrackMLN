@@ -21,6 +21,7 @@ installer/dist/
 installer/src-tauri/target/
 installer/src-tauri/assets/trackmln.exe
 installer/src-tauri/gen/
+installer/src-tauri/resources/trackmln.exe
 
 # Legacy code not part of the current app
 legacy-python/

@@ -4,3 +4,4 @@ dist/
 src-tauri/target/
 src-tauri/assets/trackmln.exe
 src-tauri/gen/
+src-tauri/resources/trackmln.exe
