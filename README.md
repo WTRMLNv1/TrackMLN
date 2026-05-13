@@ -2,12 +2,14 @@
 
 TrackMLN is a Windows desktop app for lightweight screen-time tracking.
 
-It runs as a Tauri app with a React frontend, watches the currently focused window, logs usage locally, and shows the data in a full-screen glass-style dashboard that you can toggle with a global shortcut.
+It runs as a Tauri app with a React frontend, watches the currently focused window, logs usage locally, and shows the data in a full-screen glass-style dashboard you can toggle with a global shortcut.
+
+> ⚠️ Windows only. (Because I don't have MacOS or Linux 🥀. I won't download Linux for 1 single repo)
 
 ## What It Does
 
-- Tracks the active foreground app once per second.
-- Stores session history locally in SQLite.
+- Tracks the active foreground app once per second
+- Stores session history locally in SQLite (your data stays on your machine, not my problem)
 - Shows a `Today` dashboard with:
   - total tracked time
   - most-used apps
@@ -17,20 +19,29 @@ It runs as a Tauri app with a React frontend, watches the currently focused wind
   - most-used apps across the last 7 days
   - daily usage trend vs current and previous week averages
   - per-day app breakdown
-- Includes a `Settings` screen for:
-  - changing the global shortcut
-  - adjusting the glass blur strength
-- Runs from the system tray and can be shown or hidden with a hotkey.
-- Includes a separate installer app that packages and installs the main app for Windows.
+- `Settings` screen for changing the global shortcut and adjusting glass blur strength
+- Runs from the system tray, show/hide with a hotkey
+- Comes with a separate installer app so you don't have to deal with any of that yourself
 
-## Current Scope
+## How to Download
 
-TrackMLN currently focuses on local tracking and dashboarding.
+To download TrackMLN for everyday use (for development builds, see [§Development](#development)):
 
-- Data is stored only on the local machine.
-- There is no account system or cloud sync.
-- The app is currently Windows-only because the tracking code uses Windows APIs to read the active foreground process.
-- The codebase already contains a `goals` table and tracker-side limit checks, but full goal management is not exposed in the current UI yet.
+1. Open the [Releases](https://github.com/WTRMLNv1/TrackMLN/releases) page
+2. Download `trackmln-installer-v1.x.exe` from the Assets section of the latest release
+
+Or just download the latest version directly [here](https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.0/trackmln-installer-v1.0.exe) (recommended for most people).
+
+After downloading:
+
+1. Open the installer
+2. Click Install
+
+TrackMLN will automatically start whenever you log into Windows.
+
+To disable this: `Settings → Apps → Startup Apps → TrackMLN → Off`
+
+> ⚠️ Not recommended — you'll have to launch it manually every time, which kind of defeats the purpose.
 
 ## Screenshots
 
@@ -53,6 +64,15 @@ TrackMLN currently focuses on local tracking and dashboarding.
 <p align="center">
   <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/mogging%20peppa.jpeg" width="30" />
 </p>
+
+## Current Scope
+
+TrackMLN is intentionally local and simple for now.
+
+- All data stays on your machine — no accounts, no cloud sync
+- Windows-only because the tracker uses Windows APIs to read the active foreground process
+- There's already a `goals` table and limit checks in the backend, but the UI for managing goals isn't exposed yet — it'll get there
+
 ## Tech Stack
 
 - Tauri 2
@@ -69,71 +89,51 @@ TrackMLN currently focuses on local tracking and dashboarding.
 .
 ├─ src/                     React UI for the main TrackMLN app
 ├─ src-tauri/               Rust backend for the main app
-├─ installer/               Separate Tauri app used to install TrackMLN
+├─ installer/               Separate Tauri app that installs TrackMLN
 │  ├─ src/                  Installer frontend
 │  └─ src-tauri/            Installer backend
-└─ legacy-python/           Older code kept out of the active app flow
 ```
 
 ## How Tracking Works
 
-The Rust tracker polls the active foreground window every second.
+The Rust backend polls the active foreground window every second. When the focused executable changes, it writes the previous session to the local database with the app name, start time, and end time.
 
-When the focused executable changes, the previous session is written to the local database with:
+Some executable names get normalized into friendlier labels:
 
-- app name
-- start time
-- end time
+- `javaw.exe` → `Minecraft`
+- `explorer.exe` → `File Explorer`
+- `whatsapp.exe` → `WhatsApp`
 
-Some executable names are normalized into friendlier labels such as:
-
-- `javaw.exe` -> `Minecraft`
-- `explorer.exe` -> `File Explorer`
-- `whatsapp.exe` -> `WhatsApp`
-
-Idle and unknown windows are filtered out of the main dashboard views.
+Idle and unknown windows are filtered out of the dashboard views.
 
 ## Known Bugs
 
-A few bugs are known and will be fixed shortly
+These are known and will be fixed at some point:
 
-1. Scrollbar looks... questionable
-2. Sometimes the time achieves negative space time and shows screen time in one hour as more than one hour
+1. The scrollbar looks questionable
+2. Sometimes screen time in a single hour shows as *more than an hour* (negative space time, impressive really)
 3. Registers sleeping laptop time as screen time
-4. Hover goes back a few hours in the hourly chart
+4. Hovering on the hourly chart jumps back a few hours
 
 ## Local Data
 
-TrackMLN stores its local files in the app data directory used by Tauri.
+TrackMLN stores everything in the Tauri app data directory:
 
-The app creates and maintains:
-
-- `trackmln.db`
-- `settings.json`
-
-The database contains at least:
-
-- `sessions`
-- `goals`
-
-The settings file currently stores:
-
-- global shortcut
-- blur percentage
+- `trackmln.db` — session history and goals
+- `settings.json` — global shortcut and blur percentage
 
 ## Default Behavior
 
 - Default toggle shortcut: `Ctrl + Shift + Space`
 - The main window starts hidden
-- The app adds a tray icon
-- Closing the window minimizes/hides it instead of fully exiting
+- Closing the window hides it instead of quitting — use the tray icon to exit fully
 
 ## Development
 
 ### Requirements
 
 - Windows
-- Node.js and npm
+- Node.js + npm
 - Rust toolchain
 - Tauri prerequisites for Windows
 
@@ -145,27 +145,19 @@ From the project root:
 npm install
 ```
 
-The installer project reuses the root `node_modules`, so you usually do not need a second install inside `installer`.
+The installer reuses the root `node_modules`, so you usually don't need a second install inside `installer/`.
 
 ### Run the main app in dev mode
-
-From the project root:
 
 ```powershell
 npm run tauri:dev
 ```
 
-This starts:
+This starts the Vite dev server on `http://localhost:1420` and the Tauri desktop app.
 
-- the Vite dev server on `http://localhost:1420`
-- the Tauri desktop app
-
-Important:
-If you run a debug/dev binary directly, it may still expect the dev server to be running. For normal packaged behavior, use a release build or the installer.
+> Note: If you run a debug binary directly without the dev server running, it'll probably break. Use a release build or the installer for normal behavior.
 
 ### Build the main app
-
-From the project root:
 
 ```powershell
 npm run tauri:build
@@ -173,55 +165,44 @@ npm run tauri:build
 
 ## Installer
 
-The `installer/` folder contains a separate Tauri app that installs TrackMLN by:
+The `installer/` folder is a separate Tauri app that:
 
-- copying the bundled app into `%APPDATA%\TrackMLN\TrackMLN.exe`
-- creating a Start Menu shortcut
-- adding the app to Windows startup for the current user
-- launching the installed app after setup
+- Copies the bundled app to `%APPDATA%\TrackMLN\TrackMLN.exe`
+- Creates a Start Menu shortcut
+- Adds TrackMLN to Windows startup for the current user
+- Launches the app after setup
 
 ### Build the installer
 
 Build the main app first, then the installer.
 
-1. Build the main app release binary:
-
 ```powershell
+# Step 1 — build the main app
 npm run tauri:build
-```
 
-2. Build the installer:
-
-```powershell
+# Step 2 — build the installer
 cd installer
 npm run tauri:build
 ```
 
-The installer build now automatically copies the main app release executable into:
+The installer build automatically copies the main app executable into `installer/src-tauri/assets/trackmln.exe` — no manual copying needed.
 
-```text
-installer/src-tauri/assets/trackmln.exe
-```
+## Notes for Contributors
 
-So you do not need to copy that file by hand anymore.
-
-## Notes For Contributors
-
-- The repo intentionally ignores generated binaries, build folders, and the bundled installer payload.
-- The installer source is tracked, but the embedded `trackmln.exe` is not.
-- `legacy-python/` is preserved as old reference code and is not part of the active app.
+- The repo ignores generated binaries, build folders, and the bundled installer payload
+- The installer source is tracked, but the embedded `trackmln.exe` is not
 
 ## Known Limitations
 
-- Windows-only tracking implementation
+- Windows-only
 - No cloud sync
-- No full in-app goal editing UI yet
-- No notifications or enforcement flow when limits are exceeded yet
+- No in-app goal editing UI yet
+- No notifications or limit enforcement yet (the backend has it, kinda, the UI doesn't)
 
 ## License
 
-No license has been added yet.
+MIT — do whatever you want with it.
 
 ---
 
-Made with 💚, Debugged with 😭 by [WTRMLN](github.com/WTRMLNv1)
+Made with 💚, Debugged with 😭 by [WTRMLN](https://github.com/WTRMLNv1)
