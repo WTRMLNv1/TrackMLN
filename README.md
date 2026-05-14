@@ -71,7 +71,7 @@ TrackMLN is intentionally local and simple for now.
 
 - All data stays on your machine — no accounts, no cloud sync
 - Windows-only because the tracker uses Windows APIs to read the active foreground process
-- There's already a `goals` table and limit checks in the backend, but the UI for managing goals isn't exposed yet — it'll get there
+- There's already a `goals` table and limit checks in the backend, but the UI for managing goals isn't exposed yet — it'll get there, i hope
 
 ## Tech Stack
 
@@ -105,6 +105,7 @@ Some executable names get normalized into friendlier labels:
 - `whatsapp.exe` → `WhatsApp`
 
 Idle and unknown windows are filtered out of the dashboard views.
+**Will be editable**
 
 ## Known Bugs
 
@@ -194,14 +195,18 @@ The installer build automatically copies the main app executable into `installer
 
 ## Known Limitations
 
-- Windows-only
-- No cloud sync
-- No in-app goal editing UI yet
+- Windows-only (will make macOS if you buy me a MacBook to test it on ;))
+- No cloud sync (why would you need cloud sync anyways, i wont make it anyways)
+- No in-app goal editing UI yet (will come soon, or won't if i get distracted again)
 - No notifications or limit enforcement yet (the backend has it, kinda, the UI doesn't)
 
 ## License
 
-MIT — do whatever you want with it.
+## License
+
+Source-available — free for non-commercial use.
+See [LICENSE](./LICENSE) for full terms.
+(idk what its called ive only heard of MIT :/)
 
 ---
 
