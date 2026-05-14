@@ -65,14 +65,14 @@ fn main() {
             app.manage(AppState {
                 db,
                 settings: Mutex::new(settings.clone()),
-                settings_path,
+                settings_path: settings_path.clone(),
             });
             apply_window_glass(&main_window);
             configure_main_window(&main_window)?;
             setup_tray(app.handle())?;
             let _ = main_window.hide();
             setup_global_shortcut(app.handle(), &settings.hotkey)?;
-            tracker::start_tracker(tracker_db);
+            tracker::start_tracker(tracker_db, settings_path.clone());
             Ok(())
         })
         .run(tauri::generate_context!())

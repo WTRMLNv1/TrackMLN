@@ -1,11 +1,13 @@
 # Python cache and local env files
+# EVEN THOUGH THIS IS A TAURI PROJECT HAHAHAHAHAHHAHAH
 __pycache__/
-*.py[cod]
+*.py[cod]  
 *$py.class
 .env/
-venv/
+venv/        # <- I DONT USE VENV HAHAHAHAHA
 
 # App data and editor folders
+# i was told to exclude .vs in some tutorial i havent actually seen the .vs folder
 .vs/
 data/
 

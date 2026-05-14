@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -5,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct AppSettings {
     pub hotkey: String,
     pub blur_percent: u8,
+    pub exe_labels: HashMap<String, String>,
 }
 
 impl Default for AppSettings {
@@ -12,8 +14,24 @@ impl Default for AppSettings {
         Self {
             hotkey: "control+shift+Space".into(),
             blur_percent: 100,
+            exe_labels: default_exe_labels(),
         }
     }
+}
+
+pub fn default_exe_labels() -> HashMap<String, String> {
+    [
+        ("javaw.exe", "Minecraft"),
+        ("pythonw.exe", "Python App"),
+        ("python.exe", "Python"),
+        ("cmd.exe", "Command Prompt"),
+        ("explorer.exe", "File Explorer"),
+        ("whatsapp.exe", "WhatsApp"),
+        ("whatsapp.root.exe", "WhatsApp"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

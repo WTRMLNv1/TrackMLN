@@ -16,10 +16,7 @@ export function Today() {
   const { apps, hourly, error, loading } = useToday();
   const total = apps.reduce((sum, app) => sum + app.total, 0);
   const topApp = apps[0] ?? null;
-  const hourlyData = hourly.map((entry) => ({
-    ...entry,
-    label: formatHour(entry.hour)
-  }));
+  const hourlyData = hourly.map((entry) => ({ ...entry }));
 
   return (
     <section className="today-layout">
@@ -47,7 +44,7 @@ export function Today() {
         </div>
 
         <p className="card-footnote">
-          {error ? error : "Live view based on today’s tracked sessions."}
+          {error ? error : "Live view based on today's tracked sessions."}
         </p>
       </article>
 
@@ -89,7 +86,8 @@ export function Today() {
             <BarChart data={hourlyData}>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis
-                dataKey="label"
+                dataKey="hour"
+                tickFormatter={(hour) => formatHour(hour)}
                 tick={{ fill: "#b8bec7", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}

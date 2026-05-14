@@ -93,22 +93,39 @@ pub fn get_hourly_today(connection: &Connection) -> rusqlite::Result<Vec<HourlyD
         .map(|hour| HourlyData { hour, total: 0 })
         .collect();
 
+    let today = Local::now().date_naive();
+    let day_start = local_date_to_unix(today, 0, 0, 0);
+    let day_end = local_date_to_unix(today, 23, 59, 59);
+
     let mut statement = connection.prepare(
         "
-        SELECT CAST(strftime('%H', start, 'unixepoch', 'localtime') AS INTEGER) AS hour,
-               COALESCE(SUM(end - start), 0) AS total
-        FROM sessions
-        WHERE date(start, 'unixepoch', 'localtime') = date('now', 'localtime')
+        SELECT start, end FROM sessions
+        WHERE end >= ?1 AND start <= ?2
           AND app_name NOT IN ('Idle', 'Unknown')
-        GROUP BY hour
-        ORDER BY hour ASC
         ",
     )?;
 
-    for row in statement.query_map([], |row| Ok((row.get::<_, u32>(0)?, row.get::<_, i64>(1)?)))? {
-        let (hour, total) = row?;
-        if let Some(bucket) = buckets.get_mut(hour as usize) {
-            bucket.total = total;
+    for row in statement.query_map(params![day_start, day_end], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+    })? {
+        let (raw_start, raw_end) = row?;
+
+        // clamp to today's boundaries
+        let start = raw_start.max(day_start);
+        let end = raw_end.min(day_end + 1);
+
+        // split across hour buckets
+        let start_hour = ((start - day_start) / 3600) as usize;
+        let end_hour = ((end - day_start - 1).max(0) / 3600) as usize;
+
+        for hour in start_hour..=end_hour {
+            if hour >= 24 { break; }
+            let bucket_start = day_start + (hour as i64 * 3600);
+            let bucket_end = bucket_start + 3600;
+            let overlap = end.min(bucket_end) - start.max(bucket_start);
+            if overlap > 0 {
+                buckets[hour].total += overlap;
+            }
         }
     }
 
