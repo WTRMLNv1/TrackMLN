@@ -3655,8 +3655,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "trackmln-tauri"
-version = "0.1.0"
+name = "trackmln"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "rusqlite",
