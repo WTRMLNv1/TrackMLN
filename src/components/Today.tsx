@@ -16,7 +16,14 @@ export function Today() {
   const { apps, hourly, error, loading } = useToday();
   const total = apps.reduce((sum, app) => sum + app.total, 0);
   const topApp = apps[0] ?? null;
-  const hourlyData = hourly.map((entry) => ({ ...entry }));
+
+  // Fill all 24 hours so recharts index === hour value.
+  // Without this, sparse data from Rust (only active hours)
+  // causes the tooltip to map to the wrong hour.
+  const hourlyData = Array.from({ length: 24 }, (_, i) => ({
+    hour: i,
+    total: hourly.find((e) => e.hour === i)?.total ?? 0
+  }));
 
   return (
     <section className="today-layout">
@@ -107,6 +114,7 @@ export function Today() {
                   border: "1px solid rgba(255,255,255,0.08)",
                   borderRadius: 14
                 }}
+                labelFormatter={(hour) => formatHour(Number(hour))}
                 formatter={(value) => [formatDuration(Number(value)), "Usage"]}
               />
               <Bar

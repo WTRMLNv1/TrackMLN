@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import installerConfig from "./installer-config.json";
 
 type InstallResult = {
   installDir: string;
@@ -12,6 +13,7 @@ type InstallResult = {
 
 export default function App() {
   const appWindow = getCurrentWindow();
+  const versionLabel = `v${installerConfig.appVersion}`;
   const [deleteInstaller, setDeleteInstaller] = useState(true);
   const [status, setStatus] = useState<"idle" | "installing" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +117,7 @@ export default function App() {
 
         <div className="installer-layout">
           <aside className="glass-card installer-sidebar">
-            <span className="sidebar__eyebrow">Focus overlay</span>
+            <span className="sidebar__eyebrow">{versionLabel}</span>
             <h1>TrackMLN</h1>
             <p>The same glassy desktop feel, now packaged as a one-click installer.</p>
 

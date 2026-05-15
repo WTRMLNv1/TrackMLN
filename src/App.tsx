@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Today } from "./components/Today";
 import { Week } from "./components/Week";
@@ -9,13 +9,15 @@ import type { AppSettings } from "./types";
 
 const DEFAULT_SETTINGS: AppSettings = {
   hotkey: "control+shift+Space",
-  blurPercent: 100
+  blurPercent: 10,
+  material: "mica"
 };
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"today" | "week" | "settings">("today");
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const { baseHeight, baseWidth, containerRef, scale } = useDashboardScale();
+  const blurPercent = Math.max(0, Math.min(100, settings.blurPercent));
 
   useEffect(() => {
     let cancelled = false;
@@ -35,15 +37,17 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    document.documentElement.dataset.material = settings.material;
+  }, [settings.material]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--blur-fraction", `${blurPercent / 100}`);
+  }, [blurPercent]);
+
   return (
-    <main
-      className="app-shell"
-      style={
-        {
-          "--glass-blur": `${Math.round((34 * settings.blurPercent) / 100)}px`
-        } as CSSProperties
-      }
-    >
+    <main className="app-shell">
       <div className="app-shell__backdrop" />
       <div className="app-shell__viewport" ref={containerRef}>
         <div

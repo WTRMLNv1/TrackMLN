@@ -22,7 +22,35 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isSavingHotkey, setIsSavingHotkey] = useState(false);
   const [isSavingBlur, setIsSavingBlur] = useState(false);
+  const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+  const [storageLocation, setStorageLocation] = useState<string>("");
   const [message, setMessage] = useState<string | null>(null);
+
+  // Debug: Log settings changes
+  useEffect(() => {
+    console.log("[Settings] settings prop changed:", settings);
+    console.log("[Settings] blurPercent value:", settings.blurPercent);
+  }, [settings]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void invoke<string>("get_storage_location")
+      .then((location) => {
+        if (!cancelled) {
+          setStorageLocation(location);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setStorageLocation(`Unavailable (${String(error)})`);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isRecording) {
@@ -86,6 +114,7 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
   };
 
   const handleBlurChange = (value: number) => {
+    console.log("[Settings] handleBlurChange - slider value:", value);
     onSettingsChange({
       ...settings,
       blurPercent: value
@@ -93,11 +122,13 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
   };
 
   const commitBlurChange = (value: number) => {
+    console.log("[Settings] commitBlurChange - committing blur value:", value);
     setIsSavingBlur(true);
     setMessage(null);
 
     void invoke<AppSettings>("set_blur_percent", { blurPercent: value })
       .then((nextSettings) => {
+        console.log("[Settings] set_blur_percent response:", nextSettings);
         onSettingsChange(nextSettings);
       })
       .catch((error) => {
@@ -122,6 +153,27 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
       })
       .finally(() => {
         setIsSavingBlur(false);
+      });
+  };
+
+  const handleMaterialChange = (material: AppSettings["material"]) => {
+    onSettingsChange({
+      ...settings,
+      material
+    });
+    setIsSavingMaterial(true);
+    setMessage(null);
+
+    void invoke<AppSettings>("set_material", { material })
+      .then((nextSettings) => {
+        onSettingsChange(nextSettings);
+        setMessage(`Material updated to ${material === "mica" ? "Mica" : "Liquid Glass"}.`);
+      })
+      .catch((error) => {
+        setMessage(String(error));
+      })
+      .finally(() => {
+        setIsSavingMaterial(false);
       });
   };
 
@@ -203,18 +255,48 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
                 Reset to default
               </button>
             </div>
+
+            <p className="settings-note">
+              The blur slider now adjusts card, panel, button, and list surface softness together.
+            </p>
           </section>
 
-          <section className="settings-panel settings-panel--full">
+          <section className="settings-panel">
             <div className="settings-panel__header">
-              <h3>Storage</h3>
-              <p>
-                Usage data and app settings are now stored in your Windows AppData folder so the
-                app can keep working after installs and updates.
-              </p>
+              <h3>Material mode</h3>
+              <p>Switch the overlay between a lighter Mica surface and deeper Liquid Glass effects.</p>
             </div>
+
+            <div className="settings-action-row">
+              <button
+                className={`settings-button${settings.material === "mica" ? " is-active" : ""}`}
+                disabled={isSavingMaterial}
+                onClick={() => handleMaterialChange("mica")}
+                type="button"
+              >
+                Mica
+              </button>
+
+              <button
+                className={`settings-button${settings.material === "liquid" ? " is-active" : ""}`}
+                disabled={isSavingMaterial}
+                onClick={() => handleMaterialChange("liquid")}
+                type="button"
+              >
+                Liquid Glass
+              </button>
+            </div>
+
+            <p className="settings-note">
+              Mica uses less GPU power. Liquid Glass uses stronger blur/depth effects.
+            </p>
           </section>
+
         </div>
+
+        <p className="settings-storage">
+          Data is stored in <span title={storageLocation || "Loading storage location..."}>{storageLocation || "Loading storage location..."}</span>
+        </p>
 
         {message ? <p className="settings-status">{message}</p> : null}
       </article>

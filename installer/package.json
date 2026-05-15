@@ -8,7 +8,7 @@
     "build": "..\\node_modules\\.bin\\tsc.cmd && ..\\node_modules\\.bin\\vite.cmd build",
     "preview": "..\\node_modules\\.bin\\vite.cmd preview",
     "tauri:dev": "..\\node_modules\\.bin\\tauri.cmd dev",
-    "pretauri:build": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$source = Join-Path .. 'src-tauri\\target\\release\\trackmln-tauri.exe'; $dest = Join-Path 'src-tauri\\assets' 'trackmln.exe'; if (-not (Test-Path $source)) { throw 'Missing main app release binary. Build the main app release first.' }; Copy-Item -LiteralPath $source -Destination $dest -Force\"",
+    "pretauri:build": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$source = Join-Path .. 'src-tauri\\target\\release\\trackmln-tauri.exe'; $payloadRoot = Join-Path 'src-tauri\\assets' 'app'; $dest = Join-Path $payloadRoot 'TrackMLN.exe'; if (-not (Test-Path $source)) { throw 'Missing main app release binary. Build the main app release first.' }; New-Item -ItemType Directory -Path $payloadRoot -Force | Out-Null; Copy-Item -LiteralPath $source -Destination $dest -Force\"",
     "tauri:build": "..\\node_modules\\.bin\\tauri.cmd build"
   },
   "dependencies": {

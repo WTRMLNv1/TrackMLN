@@ -9,6 +9,9 @@ use std::{
 };
 use tauri::{AppHandle, Manager, WebviewWindow};
 
+const TRACKMLN_EXE_BYTES: &[u8] =
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "\\assets\\app\\TrackMLN.exe"));
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallOptions {
@@ -41,7 +44,7 @@ fn main() {
 
 #[tauri::command]
 fn install(app: AppHandle, options: InstallOptions) -> Result<InstallResult, String> {
-    let bundled_exe = resolve_bundled_exe(&app)?;
+    let _ = app;
 
     let appdata_dir = resolve_appdata_dir()?;
     let install_dir = appdata_dir.join("TrackMLN");
@@ -49,8 +52,14 @@ fn install(app: AppHandle, options: InstallOptions) -> Result<InstallResult, Str
 
     fs::create_dir_all(&install_dir)
         .map_err(|error| format!("failed to create install directory: {error}"))?;
-    fs::copy(&bundled_exe, &installed_exe)
-        .map_err(|error| format!("failed to copy bundled executable: {error}"))?;
+    write_embedded_executable(&installed_exe)?;
+
+    if !installed_exe.exists() {
+        return Err(format!(
+            "installed app executable was not found after writing the embedded payload into {}",
+            install_dir.display()
+        ));
+    }
 
     let shortcut_path = create_start_menu_shortcut(&installed_exe)?;
     write_startup_registry_key(&installed_exe)?;
@@ -73,28 +82,13 @@ fn install(app: AppHandle, options: InstallOptions) -> Result<InstallResult, Str
     })
 }
 
-fn resolve_bundled_exe(app: &AppHandle) -> Result<PathBuf, String> {
-    let resource_dir = app
-        .path()
-        .resource_dir()
-        .map_err(|error| format!("failed to resolve installer resources: {error}"))?;
-    let bundled_exe = resource_dir.join("trackmln.exe");
-
-    if bundled_exe.exists() {
-        return Ok(bundled_exe);
-    }
-
-    // During `tauri dev`, resources may still live in the source tree instead of the runtime folder.
-    let dev_asset_exe = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets\\trackmln.exe");
-    if dev_asset_exe.exists() {
-        return Ok(dev_asset_exe);
-    }
-
-    Err(format!(
-        "bundled app executable was not found in either {} or {}",
-        bundled_exe.display(),
-        dev_asset_exe.display()
-    ))
+fn write_embedded_executable(destination: &Path) -> Result<(), String> {
+    fs::write(destination, TRACKMLN_EXE_BYTES).map_err(|error| {
+        format!(
+            "failed to write embedded TrackMLN executable to {}: {error}",
+            destination.display()
+        )
+    })
 }
 
 fn resolve_appdata_dir() -> Result<PathBuf, String> {

@@ -21,9 +21,13 @@ src-tauri/gen/
 installer/node_modules/
 installer/dist/
 installer/src-tauri/target/
-installer/src-tauri/assets/trackmln.exe
+installer/src-tauri/assets/*
+!installer/src-tauri/assets/.gitkeep
+!installer/src-tauri/assets/app/
+!installer/src-tauri/assets/app/.gitkeep
 installer/src-tauri/gen/
 installer/src-tauri/resources/trackmln.exe
+*.exe # STOP TRACKING ASSET EXE BRO
 
 # Legacy code not part of the current app
 legacy-python/

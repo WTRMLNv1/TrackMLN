@@ -2,6 +2,9 @@ node_modules/
 dist/
 
 src-tauri/target/
-src-tauri/assets/trackmln.exe
+src-tauri/assets/*
+!src-tauri/assets/.gitkeep
+!src-tauri/assets/app/
+!src-tauri/assets/app/.gitkeep
 src-tauri/gen/
 src-tauri/resources/trackmln.exe

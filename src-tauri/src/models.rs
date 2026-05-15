@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct AppSettings {
     pub hotkey: String,
     pub blur_percent: u8,
+    pub material: String,
     pub exe_labels: HashMap<String, String>,
 }
 
@@ -14,6 +15,7 @@ impl Default for AppSettings {
         Self {
             hotkey: "control+shift+Space".into(),
             blur_percent: 100,
+            material: "mica".into(),
             exe_labels: default_exe_labels(),
         }
     }

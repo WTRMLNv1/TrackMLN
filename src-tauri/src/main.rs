@@ -34,10 +34,13 @@ fn main() {
             commands::get_week_dashboard,
             commands::get_hourly_today,
             commands::get_settings,
+            commands::get_storage_location,
             commands::set_hotkey,
             commands::reset_hotkey,
             commands::set_blur_percent,
             commands::reset_blur_percent,
+            commands::set_material,
+            commands::reset_material,
         ])
         .on_window_event(handle_window_event)
         .setup(|app| {

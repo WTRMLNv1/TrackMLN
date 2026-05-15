@@ -15,8 +15,12 @@ export function useToday() {
         invoke<HourlyData[]>("get_hourly_today")
       ]);
 
-      setApps(nextApps);
-      setHourly(nextHourly);
+      setApps(prev =>
+        JSON.stringify(prev) === JSON.stringify(nextApps) ? prev : nextApps
+      );
+      setHourly(prev =>
+        JSON.stringify(prev) === JSON.stringify(nextHourly) ? prev : nextHourly
+      );
       setError(null);
       setLoading(false);
     };

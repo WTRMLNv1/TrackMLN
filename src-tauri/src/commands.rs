@@ -32,6 +32,17 @@ pub fn get_settings(state: State<AppState>) -> Result<AppSettings, String> {
 }
 
 #[tauri::command]
+pub fn get_storage_location(state: State<AppState>) -> Result<String, String> {
+    let location = state
+        .settings_path
+        .parent()
+        .unwrap_or(state.settings_path.as_path())
+        .to_string_lossy()
+        .into_owned();
+    Ok(location)
+}
+
+#[tauri::command]
 pub fn set_blur_percent(state: State<AppState>, blur_percent: u8) -> Result<AppSettings, String> {
     let mut settings_value = state.settings.lock().map_err(|err| err.to_string())?;
     settings_value.blur_percent = blur_percent.min(settings::MAX_BLUR_PERCENT);
@@ -42,6 +53,19 @@ pub fn set_blur_percent(state: State<AppState>, blur_percent: u8) -> Result<AppS
 #[tauri::command]
 pub fn reset_blur_percent(state: State<AppState>) -> Result<AppSettings, String> {
     set_blur_percent(state, settings::DEFAULT_BLUR_PERCENT)
+}
+
+#[tauri::command]
+pub fn set_material(state: State<AppState>, material: String) -> Result<AppSettings, String> {
+    let mut settings_value = state.settings.lock().map_err(|err| err.to_string())?;
+    settings_value.material = settings::normalize_material(&material).into();
+    settings::save_settings(&state.settings_path, &settings_value)?;
+    Ok(settings_value.clone())
+}
+
+#[tauri::command]
+pub fn reset_material(state: State<AppState>) -> Result<AppSettings, String> {
+    set_material(state, settings::DEFAULT_MATERIAL.into())
 }
 
 #[tauri::command]

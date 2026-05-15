@@ -30,6 +30,6 @@
     "active": true,
     "targets": "nsis",
     "icon": ["icons/icon.ico"],
-    "resources": ["assets/trackmln.exe"]
+    "resources": ["assets/app"]
   }
 }

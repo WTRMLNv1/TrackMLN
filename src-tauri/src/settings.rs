@@ -5,6 +5,7 @@ use crate::models::AppSettings;
 pub const DEFAULT_HOTKEY: &str = "control+shift+Space";
 pub const DEFAULT_BLUR_PERCENT: u8 = 100;
 pub const MAX_BLUR_PERCENT: u8 = 100;
+pub const DEFAULT_MATERIAL: &str = "mica";
 
 pub fn default_settings_path(base_dir: impl AsRef<Path>) -> PathBuf {
     base_dir.as_ref().join("settings.json")
@@ -52,5 +53,14 @@ pub fn normalize_settings(mut settings: AppSettings) -> AppSettings {
     }
 
     settings.blur_percent = settings.blur_percent.min(MAX_BLUR_PERCENT);
+    settings.material = normalize_material(&settings.material).into();
     settings
+}
+
+pub fn normalize_material(material: &str) -> &'static str {
+    match material.trim().to_lowercase().as_str() {
+        "mica" => "mica",
+        "liquid" => "liquid",
+        _ => DEFAULT_MATERIAL,
+    }
 }

@@ -6,6 +6,7 @@ export type AppTotal = {
 export type AppSettings = {
   hotkey: string;
   blurPercent: number;
+  material: "mica" | "liquid";
 };
 
 export type HourlyData = {
