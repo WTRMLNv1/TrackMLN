@@ -1,5 +1,7 @@
 # TrackMLN
 
+![Version](https://img.shields.io/badge/version-1.1.0-brightgreen) ![Platform](https://img.shields.io/badge/platform-Windows-blue) ![License](https://img.shields.io/badge/license-source--available-lightgrey)
+
 TrackMLN is a Windows desktop app for lightweight screen-time tracking.
 
 It runs as a Tauri app with a React frontend, watches the currently focused window, logs usage locally, and shows the data in a full-screen glass-style dashboard you can toggle with a global shortcut.
@@ -19,29 +21,51 @@ It runs as a Tauri app with a React frontend, watches the currently focused wind
   - most-used apps across the last 7 days
   - daily usage trend vs current and previous week averages
   - per-day app breakdown
-- `Settings` screen for changing the global shortcut and adjusting glass blur strength
-- Runs from the system tray, show/hide with a hotkey
+- `Settings` screen for changing the global shortcut and adjusting glass blur/opacity strength
+- Two visual modes: **Mica** (default — minimalist, zero GPU) and **Liquid Glass** (more depth and animation, negligibly low GPU)
+- Runs from the system tray, show/hide with a hotkey (`Ctrl + Shift + Space` by default)
 - Comes with a separate installer app so you don't have to deal with any of that yourself
 
 ## How to Download
 
-To download TrackMLN for everyday use (for development builds, see [§Development](#development)):
+Just want it now? Download the latest installer directly [here](https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.1.0/trackmln-installer-v1.1.0.exe).
 
-1. Open the [Releases](https://github.com/WTRMLNv1/TrackMLN/releases) page
-2. Download `trackmln-installer-v1.x.x.exe` from the Assets section of the latest release
+Or grab it from the [Releases](https://github.com/WTRMLNv1/TrackMLN/releases) page — look for `trackmln-installer-v1.x.x.exe` in the Assets section.
 
-Or just download the latest version directly [here](https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.0.0/trackmln-installer-v1.0.0.exe) (recommended for most people).
+> ⚠️ Do **not** install `trackmln-main-v1.x.x.exe` — it's not intended for normal use and won't show up as an app without manual setup.
 
 After downloading:
 
-1. Open the installer
-2. Click Install
+1. Run the installer
+2. If Windows SmartScreen appears, click `More info` → `Run anyway`
+   *(The app isn't code-signed yet — this is expected)*
+3. Finish setup
 
-TrackMLN will automatically start whenever you log into Windows.
+The installer will:
+- install TrackMLN into your local app data folder
+- create a Start Menu shortcut
+- add TrackMLN to Windows startup
+- launch the app automatically after install
 
-To disable this: `Settings → Apps → Startup Apps → TrackMLN → Off`
+To disable auto-startup: `Settings → Apps → Startup Apps → TrackMLN → Off`
 
 > ⚠️ Not recommended — you'll have to launch it manually every time, which kind of defeats the purpose.
+
+## What's New
+
+### v1.1.0
+- Blur slider now works — adjusts opacity and blur of cards and sidebar
+- Added **Mica** and **Liquid Glass** visual modes (switchable in Settings)
+- Fixed hourly chart hover jumping to the wrong time
+- Fixed scrollbar mismatch
+- Fixed data display inconsistency
+
+### v1.0.1
+- Fixed sleep time being logged as screen time
+- Fixed record sleep time tracking
+
+### v1.0.0
+- Initial release
 
 ## Screenshots
 
@@ -104,17 +128,13 @@ Some executable names get normalized into friendlier labels:
 - `explorer.exe` → `File Explorer`
 - `whatsapp.exe` → `WhatsApp`
 
+More normalizations coming — this list will eventually be editable in Settings.
+
 Idle and unknown windows are filtered out of the dashboard views.
-**Will be editable**
 
 ## Known Bugs
 
-These are known and will be fixed at some point:
-
-1. The scrollbar looks questionable
-2. Sometimes screen time in a single hour shows as *more than an hour* (negative space time, impressive really)
-3. Registers sleeping laptop time as screen time
-4. Hovering on the hourly chart jumps back a few hours
+No known bugs as of v1.1.0. If something breaks, [open an issue](https://github.com/WTRMLNv1/TrackMLN/issues).
 
 ## Local Data
 
@@ -128,6 +148,17 @@ TrackMLN stores everything in the Tauri app data directory:
 - Default toggle shortcut: `Ctrl + Shift + Space`
 - The main window starts hidden
 - Closing the window hides it instead of quitting — use the tray icon to exit fully
+
+## Planned
+
+- Editable app name normalizations
+- In-app goal editing UI (backend already has it, UI doesn't yet)
+- Notifications and limit enforcement (same deal)
+
+## Known Limitations
+
+- Windows-only (will make macOS if you buy me a MacBook to test it on ;))
+- No cloud sync
 
 ## Development
 
@@ -192,15 +223,6 @@ The installer build automatically copies the main app executable into `installer
 
 - The repo ignores generated binaries, build folders, and the bundled installer payload
 - The installer source is tracked, but the embedded `trackmln.exe` is not
-
-## Known Limitations
-
-- Windows-only (will make macOS if you buy me a MacBook to test it on ;))
-- No cloud sync (why would you need cloud sync anyways, i wont make it anyways)
-- No in-app goal editing UI yet (will come soon, or won't if i get distracted again)
-- No notifications or limit enforcement yet (the backend has it, kinda, the UI doesn't)
-
-## License
 
 ## License
 
