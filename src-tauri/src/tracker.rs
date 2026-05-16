@@ -287,7 +287,26 @@ fn friendly_app_name(exe: &str, settings_path: &Path) -> String {
 fn load_exe_label(exe: &str, settings_path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(settings_path).ok()?;
     let settings: crate::models::AppSettings = serde_json::from_str(&text).ok()?;
-    settings.exe_labels.get(exe).cloned()
+
+    // Try an exact key lookup first
+    if let Some(v) = settings.exe_labels.get(exe) {
+        return Some(v.clone());
+    }
+
+    // Normalize for case-insensitive matching and be tolerant of missing/extra ".exe" suffix
+    let target = exe.to_lowercase();
+    let target_no_ext = target.trim_end_matches(".exe");
+
+    for (k, v) in settings.exe_labels.iter() {
+        let key = k.to_lowercase();
+        let key_no_ext = key.trim_end_matches(".exe");
+
+        if key == target || key_no_ext == target_no_ext || key == target_no_ext || key_no_ext == target {
+            return Some(v.clone());
+        }
+    }
+
+    None
 }
 
 fn capitalize(value: &str) -> String {

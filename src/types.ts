@@ -7,6 +7,7 @@ export type AppSettings = {
   hotkey: string;
   blurPercent: number;
   material: "mica" | "liquid";
+  exeLabels: Record<string, string>;
 };
 
 export type HourlyData = {

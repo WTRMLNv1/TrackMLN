@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::models::AppSettings;
+use crate::models::{AppSettings, default_exe_labels};
 
 pub const DEFAULT_HOTKEY: &str = "control+shift+Space";
 pub const DEFAULT_BLUR_PERCENT: u8 = 100;
@@ -30,7 +30,23 @@ pub fn load_settings(path: impl AsRef<Path>) -> Result<AppSettings, String> {
         return Ok(settings);
     }
 
-    let settings = serde_json::from_str::<AppSettings>(&raw).map_err(|err| err.to_string())?;
+    // Parse raw JSON to check whether the `exeLabels` key exists in the file.
+    let value: serde_json::Value = serde_json::from_str(&raw).map_err(|err| err.to_string())?;
+    let exe_labels_present = match &value {
+        serde_json::Value::Object(map) => map.contains_key("exeLabels"),
+        _ => false,
+    };
+
+    // Deserialize into the AppSettings struct (missing fields will be defaulted by serde).
+    let mut settings = serde_json::from_value::<AppSettings>(value).map_err(|err| err.to_string())?;
+
+    // If the settings file did not contain the exeLabels key at all, populate it with
+    // the default mappings and persist the file so users have an editable copy.
+    if !exe_labels_present {
+        settings.exe_labels = default_exe_labels();
+        save_settings(path, &settings)?;
+    }
+
     Ok(normalize_settings(settings))
 }
 
