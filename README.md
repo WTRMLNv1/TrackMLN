@@ -1,6 +1,16 @@
 # TrackMLN
 
-![Version](https://img.shields.io/badge/version-1.1.0-brightgreen) ![Platform](https://img.shields.io/badge/platform-Windows-blue) ![License](https://img.shields.io/badge/license-source--available-lightgrey)
+<p align="left">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/OS-badge.svg" height="30">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/version-badge.svg" height="30">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/license-badge.svg" height="30">
+</p>
+
+<p align="left">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/backend-badge.svg" height="30">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/framework-badge.svg" height="30">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/ui-badge.svg" height="30">
+</p>
 
 TrackMLN is a Windows desktop app for lightweight screen-time tracking.
 
