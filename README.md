@@ -8,7 +8,7 @@
 
 <p align="left">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/backend-badge.svg" height="30">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/framework-badge.svg" height="30">
+  <img src=https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/refs/heads/main/TrackMLN-assets/badges/framework-badge.svg height="30">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/ui-badge.svg" height="30">
 </p>
 
