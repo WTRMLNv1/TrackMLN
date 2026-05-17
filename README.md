@@ -76,27 +76,61 @@ To disable auto-startup: `Settings → Apps → Startup Apps → TrackMLN → Of
 
 ### v1.0.0
 - Initial release
-
 ## Screenshots
 
+### Daily View
+
 <p align="center">
-  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/daily.png" width="700" />
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/daily_mica.png" width="420" />
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/daily_liquid-glass.png" width="420" />
 </p>
 
 <p align="center">
-  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/weekly.png" width="700" />
+  <sub>Left: Mica</sub>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <sub>Right: Liquid Glass</sub>
+</p>
+
+---
+
+### Weekly View
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/weekly_mica.png" width="420" />
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/weekly_liquid-glass.png" width="420" />
 </p>
 
 <p align="center">
-  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/settings.png" width="700" />
+  <sub>Left: Mica</sub>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <sub>Right: Liquid Glass</sub>
+</p>
+
+---
+
+### Settings
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/settings_mica.png" width="420" />
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/settings_liquid-glass.png" width="420" />
 </p>
 
 <p align="center">
-  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/installer.png" width="700" />
+  <sub>Left: Mica</sub>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <sub>Right: Liquid Glass</sub>
+</p>
+
+---
+
+### Installer
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/installer.png" width="850" />
 </p>
 
 <p align="center">
-  <img src="https://github.com/WTRMLNv1/TrackMLN/raw/main/github-assets/mogging%20peppa.jpeg" width="30" />
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/mogging%20peppa.jpeg" width="30" />
 </p>
 
 ## Current Scope
