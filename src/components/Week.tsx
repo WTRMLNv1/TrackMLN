@@ -70,7 +70,7 @@ export function Week() {
               const width =
                 data.week_total > 0 ? Math.max(12, (app.total / data.week_total) * 100) : 0;
               return (
-                <div className="ranked-row ranked-row--week" key={app.app_name}>
+                <div className="ranked-row ranked-row--week" key={app.app_identity}>
                   <span className="ranked-row__index">{index + 1}</span>
                   <span className="ranked-row__name">{app.app_name}</span>
                   <div className="ranked-row__track">
@@ -158,7 +158,7 @@ export function Week() {
               const width =
                 selectedDay.total > 0 ? Math.max(8, (app.total / selectedDay.total) * 100) : 0;
               return (
-                <div className="distribution-row" key={`${selectedDay.date}-${app.app_name}`}>
+                <div className="distribution-row" key={`${selectedDay.date}-${app.app_identity}`}>
                   <div className="distribution-row__label">
                     <span
                       className="distribution-row__dot"

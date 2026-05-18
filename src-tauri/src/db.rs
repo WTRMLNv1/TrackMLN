@@ -29,6 +29,8 @@ pub fn init_schema(connection: &Connection) -> rusqlite::Result<()> {
         "
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_identity TEXT,
+            exe_name TEXT,
             app_name TEXT NOT NULL,
             start INTEGER NOT NULL,
             end INTEGER NOT NULL
@@ -43,11 +45,17 @@ pub fn init_schema(connection: &Connection) -> rusqlite::Result<()> {
         CREATE INDEX IF NOT EXISTS idx_sessions_start ON sessions(start);
         CREATE INDEX IF NOT EXISTS idx_sessions_app_name ON sessions(app_name);
         ",
-    )
+    )?;
+
+    ensure_column(connection, "sessions", "app_identity", "TEXT")?;
+    ensure_column(connection, "sessions", "exe_name", "TEXT")?;
+    Ok(())
 }
 
 pub fn log_session(
     connection: &Connection,
+    app_identity: Option<&str>,
+    exe_name: Option<&str>,
     app_name: &str,
     start: DateTime<Local>,
     end: DateTime<Local>,
@@ -58,8 +66,31 @@ pub fn log_session(
     }
 
     connection.execute(
-        "INSERT INTO sessions (app_name, start, end) VALUES (?1, ?2, ?3)",
-        params![app_name, start.timestamp(), end.timestamp()],
+        "INSERT INTO sessions (app_identity, exe_name, app_name, start, end) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![app_identity, exe_name, app_name, start.timestamp(), end.timestamp()],
+    )?;
+    Ok(())
+}
+
+fn ensure_column(
+    connection: &Connection,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> rusqlite::Result<()> {
+    let mut statement = connection.prepare(&format!("PRAGMA table_info({table})"))?;
+    let mut rows = statement.query([])?;
+
+    while let Some(row) = rows.next()? {
+        let existing: String = row.get(1)?;
+        if existing == column {
+            return Ok(());
+        }
+    }
+
+    connection.execute(
+        &format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"),
+        [],
     )?;
     Ok(())
 }
@@ -67,20 +98,29 @@ pub fn log_session(
 pub fn get_today_totals(connection: &Connection) -> rusqlite::Result<Vec<AppTotal>> {
     let mut statement = connection.prepare(
         "
-        SELECT app_name, COALESCE(SUM(end - start), 0) AS total
+        SELECT CASE
+                   WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                   ELSE LOWER(app_name)
+               END AS app_identity,
+               MIN(app_name) AS app_name,
+               COALESCE(SUM(end - start), 0) AS total
         FROM sessions
         WHERE date(start, 'unixepoch', 'localtime') = date('now', 'localtime')
-          AND app_name NOT IN ('Idle', 'Unknown')
-        GROUP BY app_name
-        ORDER BY total DESC, app_name ASC
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
+        GROUP BY app_identity
+        ORDER BY total DESC, app_identity ASC
         ",
     )?;
 
     let totals = statement
         .query_map([], |row| {
             Ok(AppTotal {
-                app_name: row.get(0)?,
-                total: row.get(1)?,
+                app_identity: row.get(0)?,
+                app_name: row.get(1)?,
+                total: row.get(2)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -101,7 +141,10 @@ pub fn get_hourly_today(connection: &Connection) -> rusqlite::Result<Vec<HourlyD
         "
         SELECT start, end FROM sessions
         WHERE end >= ?1 AND start <= ?2
-          AND app_name NOT IN ('Idle', 'Unknown')
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
         ",
     )?;
 
@@ -186,7 +229,10 @@ pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData>
                COALESCE(SUM(end - start), 0) AS total
         FROM sessions
         WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
-          AND app_name NOT IN ('Idle', 'Unknown')
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
         GROUP BY day
         ORDER BY day ASC
         ",
@@ -203,13 +249,20 @@ pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData>
     let mut day_apps_statement = connection.prepare(
         "
         SELECT date(start, 'unixepoch', 'localtime') AS day,
-               app_name,
+               CASE
+                   WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                   ELSE LOWER(app_name)
+               END AS app_identity,
+               MIN(app_name) AS app_name,
                COALESCE(SUM(end - start), 0) AS total
         FROM sessions
         WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
-          AND app_name NOT IN ('Idle', 'Unknown')
-        GROUP BY day, app_name
-        ORDER BY day ASC, total DESC, app_name ASC
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
+        GROUP BY day, app_identity
+        ORDER BY day ASC, total DESC, app_identity ASC
         ",
     )?;
 
@@ -219,8 +272,9 @@ pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData>
             Ok((
                 row.get::<_, String>(0)?,
                 AppTotal {
-                    app_name: row.get(1)?,
-                    total: row.get(2)?,
+                    app_identity: row.get(1)?,
+                    app_name: row.get(2)?,
+                    total: row.get(3)?,
                 },
             ))
         },
@@ -231,12 +285,20 @@ pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData>
 
     let mut week_apps_statement = connection.prepare(
         "
-        SELECT app_name, COALESCE(SUM(end - start), 0) AS total
+        SELECT CASE
+                   WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                   ELSE LOWER(app_name)
+               END AS app_identity,
+               MIN(app_name) AS app_name,
+               COALESCE(SUM(end - start), 0) AS total
         FROM sessions
         WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
-          AND app_name NOT IN ('Idle', 'Unknown')
-        GROUP BY app_name
-        ORDER BY total DESC, app_name ASC
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
+        GROUP BY app_identity
+        ORDER BY total DESC, app_identity ASC
         ",
     )?;
 
@@ -245,8 +307,9 @@ pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData>
             params![week_start.to_string(), week_end.to_string()],
             |row| {
                 Ok(AppTotal {
-                    app_name: row.get(0)?,
-                    total: row.get(1)?,
+                    app_identity: row.get(0)?,
+                    app_name: row.get(1)?,
+                    total: row.get(2)?,
                 })
             },
         )?
@@ -257,7 +320,10 @@ pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData>
         SELECT COALESCE(SUM(end - start), 0)
         FROM sessions
         WHERE date(start, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
-          AND app_name NOT IN ('Idle', 'Unknown')
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
         ",
         params![last_week_start.to_string(), last_week_end.to_string()],
         |row| row.get(0),
@@ -318,7 +384,7 @@ mod tests {
         let start = Local::now();
         let end = start + Duration::milliseconds(500);
 
-        log_session(&connection, "Chrome", start, end).expect("session write");
+        log_session(&connection, None, None, "Chrome", start, end).expect("session write");
 
         let count: i64 = connection
             .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))
@@ -335,13 +401,14 @@ mod tests {
         let start_2 = unix_to_local(local_date_to_unix(today, 10, 0, 0)).unwrap();
         let end_2 = unix_to_local(local_date_to_unix(today, 10, 15, 0)).unwrap();
 
-        log_session(&connection, "Chrome", start, end).expect("session write");
-        log_session(&connection, "Chrome", start_2, end_2).expect("session write");
+        log_session(&connection, None, None, "Chrome", start, end).expect("session write");
+        log_session(&connection, None, None, "Chrome", start_2, end_2).expect("session write");
 
         let totals = get_today_totals(&connection).expect("today totals");
         assert_eq!(
             totals,
             vec![AppTotal {
+                app_identity: "chrome".into(),
                 app_name: "Chrome".into(),
                 total: 2_700
             }]
@@ -364,8 +431,8 @@ mod tests {
         let last_start = unix_to_local(local_date_to_unix(last_week_day, 14, 0, 0)).unwrap();
         let last_end = unix_to_local(local_date_to_unix(last_week_day, 14, 30, 0)).unwrap();
 
-        log_session(&connection, "VS Code", this_start, this_end).expect("session write");
-        log_session(&connection, "VS Code", last_start, last_end).expect("session write");
+        log_session(&connection, None, None, "VS Code", this_start, this_end).expect("session write");
+        log_session(&connection, None, None, "VS Code", last_start, last_end).expect("session write");
 
         let dashboard = get_week_dashboard(&connection).expect("week dashboard");
         assert_eq!(dashboard.week_total, 3_600);
@@ -373,6 +440,7 @@ mod tests {
         assert_eq!(
             dashboard.top_app,
             Some(AppTotal {
+                app_identity: "vs code".into(),
                 app_name: "VS Code".into(),
                 total: 3_600
             })

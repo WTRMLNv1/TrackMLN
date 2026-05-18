@@ -38,6 +38,7 @@ pub fn default_exe_labels() -> HashMap<String, String> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AppTotal {
+    pub app_identity: String,
     pub app_name: String,
     pub total: i64,
 }

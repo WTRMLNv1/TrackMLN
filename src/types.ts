@@ -1,4 +1,5 @@
 export type AppTotal = {
+  app_identity: string;
   app_name: string;
   total: number;
 };

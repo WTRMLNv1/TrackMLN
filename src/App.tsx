@@ -10,7 +10,8 @@ import type { AppSettings } from "./types";
 const DEFAULT_SETTINGS: AppSettings = {
   hotkey: "control+shift+Space",
   blurPercent: 10,
-  material: "mica"
+  material: "mica",
+  exeLabels: {}
 };
 
 export default function App() {

@@ -1,17 +1,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod app_names;
 mod commands;
 mod db;
 mod models;
 mod settings;
 mod tracker;
 
+use app_names::{default_cache_path, AppNameResolver};
 use db::{default_db_path, open_shared_database, SharedDb};
 use models::AppSettings;
 use settings::{default_settings_path, load_settings, save_settings, DEFAULT_HOTKEY};
 use std::error::Error;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -23,8 +25,9 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 pub struct AppState {
     pub db: SharedDb,
-    pub settings: Mutex<AppSettings>,
+    pub settings: Arc<Mutex<AppSettings>>,
     pub settings_path: PathBuf,
+    pub app_name_resolver: Arc<Mutex<AppNameResolver>>,
 }
 
 fn main() {
@@ -41,6 +44,7 @@ fn main() {
             commands::reset_blur_percent,
             commands::set_material,
             commands::reset_material,
+            commands::set_exe_labels,
         ])
         .on_window_event(handle_window_event)
         .setup(|app| {
@@ -52,6 +56,11 @@ fn main() {
                 .expect("failed to initialize database");
             let settings_path = default_settings_path(&data_dir);
             let mut settings = load_settings(&settings_path).expect("failed to load settings");
+            let settings_state = Arc::new(Mutex::new(settings.clone()));
+            let resolver = Arc::new(Mutex::new(
+                AppNameResolver::new(default_cache_path(&data_dir), settings.exe_labels.clone())
+                    .expect("failed to initialize app name resolver"),
+            ));
             let tracker_db = db.clone();
             let main_window = app
                 .get_webview_window("main")
@@ -67,15 +76,16 @@ fn main() {
 
             app.manage(AppState {
                 db,
-                settings: Mutex::new(settings.clone()),
+                settings: settings_state.clone(),
                 settings_path: settings_path.clone(),
+                app_name_resolver: resolver.clone(),
             });
             apply_window_glass(&main_window);
             configure_main_window(&main_window)?;
             setup_tray(app.handle())?;
             let _ = main_window.hide();
             setup_global_shortcut(app.handle(), &settings.hotkey)?;
-            tracker::start_tracker(tracker_db, settings_path.clone());
+            tracker::start_tracker(tracker_db, resolver);
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -184,7 +194,13 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn Error>> {
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "open" => toggle_main_window(app),
-            "close" => app_handle.exit(0),
+            "close" => {
+                let state = app.state::<AppState>();
+                if let Ok(mut resolver) = state.app_name_resolver.lock() {
+                    let _ = resolver.save_if_dirty();
+                }
+                app_handle.exit(0);
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {

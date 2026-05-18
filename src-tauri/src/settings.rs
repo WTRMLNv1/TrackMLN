@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 
 use crate::models::{AppSettings, default_exe_labels};
 
@@ -70,7 +71,24 @@ pub fn normalize_settings(mut settings: AppSettings) -> AppSettings {
 
     settings.blur_percent = settings.blur_percent.min(MAX_BLUR_PERCENT);
     settings.material = normalize_material(&settings.material).into();
+    settings.exe_labels = normalize_exe_labels(settings.exe_labels);
     settings
+}
+
+pub fn normalize_exe_labels(exe_labels: HashMap<String, String>) -> HashMap<String, String> {
+    exe_labels
+        .into_iter()
+        .filter_map(|(key, value)| {
+            let normalized_key = key.trim().to_lowercase();
+            let normalized_value = value.trim().to_string();
+
+            if normalized_key.is_empty() || normalized_value.is_empty() {
+                None
+            } else {
+                Some((normalized_key, normalized_value))
+            }
+        })
+        .collect()
 }
 
 pub fn normalize_material(material: &str) -> &'static str {

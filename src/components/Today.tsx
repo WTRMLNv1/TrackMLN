@@ -68,7 +68,7 @@ export function Today() {
             apps.map((app, index) => {
               const width = total > 0 ? Math.max(12, (app.total / total) * 100) : 0;
               return (
-                <div className="ranked-row" key={app.app_name}>
+                <div className="ranked-row" key={app.app_identity}>
                   <span className="ranked-row__index">{index + 1}</span>
                   <span className="ranked-row__name">{app.app_name}</span>
                   <div className="ranked-row__track">

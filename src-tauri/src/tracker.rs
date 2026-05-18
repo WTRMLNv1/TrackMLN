@@ -1,10 +1,11 @@
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Local};
+use crate::app_names::{AppNameResolver, ResolvedApp};
 use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::Threading::{
@@ -28,14 +29,14 @@ const MAX_SESSION_GAP: Duration = Duration::from_secs(4);
 // Shared flag — true = screen is on, false = screen is off
 static SCREEN_ON: AtomicBool = AtomicBool::new(true);
 
-pub fn start_tracker(db: SharedDb, settings_path: PathBuf) {
+pub fn start_tracker(db: SharedDb, app_name_resolver: Arc<Mutex<AppNameResolver>>) {
     // Spin up the power monitor on its own thread (needs its own message loop)
     thread::spawn(|| {
         run_power_monitor();
     });
 
     thread::spawn(move || {
-        let mut tracker = Tracker::new(db, settings_path);
+        let mut tracker = Tracker::new(db, app_name_resolver);
         tracker.run();
     });
 }
@@ -112,8 +113,9 @@ unsafe extern "system" fn power_wnd_proc(
 
 struct Tracker {
     db: SharedDb,
-    settings_path: PathBuf,
-    current_exe: Option<String>,
+    app_name_resolver: Arc<Mutex<AppNameResolver>>,
+    current_identity: Option<String>,
+    current_exe_name: Option<String>,
     current_app: Option<String>,
     session_start: Option<DateTime<Local>>,
     last_tick: Instant,
@@ -121,11 +123,12 @@ struct Tracker {
 }
 
 impl Tracker {
-    fn new(db: SharedDb, settings_path: PathBuf) -> Self {
+    fn new(db: SharedDb, app_name_resolver: Arc<Mutex<AppNameResolver>>) -> Self {
         Self {
             db,
-            settings_path,
-            current_exe: None,
+            app_name_resolver,
+            current_identity: None,
+            current_exe_name: None,
             current_app: None,
             session_start: None,
             last_tick: Instant::now(),
@@ -159,36 +162,53 @@ impl Tracker {
             return Ok(());
         }
 
-        let (exe, app_name) = get_active_window(&self.settings_path);
+        let resolved = get_active_window(&self.app_name_resolver);
 
-        if self.current_exe.as_deref() != Some(exe.as_str()) {
+        if self.current_identity.as_deref() != Some(resolved.identity.as_str()) {
             self.flush_current()?;
-            self.current_exe = Some(exe.clone());
-            self.current_app = Some(app_name.clone());
+            self.current_identity = Some(resolved.identity.clone());
+            self.current_exe_name = Some(resolved.exe_name.clone());
+            self.current_app = Some(resolved.app_name.clone());
             self.session_start = Some(Local::now());
         }
 
-        self.check_limit(&app_name)?;
+        self.check_limit(&resolved.app_name)?;
+        self
+            .app_name_resolver
+            .lock()
+            .map_err(|err| err.to_string())?
+            .flush_if_due()?;
         Ok(())
     }
 
     fn flush_current(&mut self) -> Result<(), String> {
         let Some(app_name) = self.current_app.clone() else {
-            self.current_exe = None;
+            self.current_identity = None;
+            self.current_exe_name = None;
             self.session_start = None;
             return Ok(());
         };
         let Some(start) = self.session_start else {
-            self.current_exe = None;
+            self.current_identity = None;
+            self.current_exe_name = None;
             self.current_app = None;
             return Ok(());
         };
 
         let end = Local::now();
         let connection = self.db.lock().map_err(|err| err.to_string())?;
-        db::log_session(&connection, &app_name, start, end).map_err(|err| err.to_string())?;
+        db::log_session(
+            &connection,
+            self.current_identity.as_deref(),
+            self.current_exe_name.as_deref(),
+            &app_name,
+            start,
+            end,
+        )
+        .map_err(|err| err.to_string())?;
 
-        self.current_exe = None;
+        self.current_identity = None;
+        self.current_exe_name = None;
         self.current_app = None;
         self.session_start = None;
         Ok(())
@@ -213,10 +233,14 @@ impl Tracker {
 
 // ── Win32 helpers ─────────────────────────────────────────────────────────────
 
-fn get_active_window(settings_path: &Path) -> (String, String) {
+fn get_active_window(app_name_resolver: &Arc<Mutex<AppNameResolver>>) -> ResolvedApp {
     let hwnd = unsafe { GetForegroundWindow() };
     if hwnd == HWND(std::ptr::null_mut()) {
-        return ("idle".into(), "Idle".into());
+        return ResolvedApp {
+            identity: "idle".into(),
+            exe_name: "idle".into(),
+            app_name: "Idle".into(),
+        };
     }
 
     let mut process_id = 0u32;
@@ -225,19 +249,31 @@ fn get_active_window(settings_path: &Path) -> (String, String) {
     }
 
     if process_id == 0 {
-        return ("unknown".into(), "Unknown".into());
+        return ResolvedApp {
+            identity: "unknown".into(),
+            exe_name: "unknown".into(),
+            app_name: "Unknown".into(),
+        };
     }
 
-    match process_exe_name(process_id) {
-        Some(exe) => {
-            let app_name = friendly_app_name(&exe, settings_path);
-            (exe, app_name)
-        }
-        None => ("unknown".into(), "Unknown".into()),
+    match process_exe_path(process_id) {
+        Some(path) => app_name_resolver
+            .lock()
+            .map(|mut resolver| resolver.resolve_app_name(&path))
+            .unwrap_or_else(|_| ResolvedApp {
+                identity: "unknown".into(),
+                exe_name: "unknown".into(),
+                app_name: "Unknown".into(),
+            }),
+        None => ResolvedApp {
+            identity: "unknown".into(),
+            exe_name: "unknown".into(),
+            app_name: "Unknown".into(),
+        },
     }
 }
 
-fn process_exe_name(process_id: u32) -> Option<String> {
+fn process_exe_path(process_id: u32) -> Option<String> {
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id).ok()? };
     let mut size = 260u32;
     let mut buffer = vec![0u16; size as usize];
@@ -259,60 +295,5 @@ fn process_exe_name(process_id: u32) -> Option<String> {
         return None;
     }
 
-    let path = String::from_utf16_lossy(&buffer[..size as usize]);
-    Path::new(&path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(|name| name.to_lowercase())
-}
-
-fn friendly_app_name(exe: &str, settings_path: &Path) -> String {
-    if let Some(label) = load_exe_label(exe, settings_path) {
-        return label;
-    }
-
-    match exe {
-        "unknown" => "Unknown".into(),
-        "idle" => "Idle".into(),
-        other => other
-            .trim_end_matches(".exe")
-            .split(['-', '_', ' '])
-            .filter(|part| !part.is_empty())
-            .map(capitalize)
-            .collect::<Vec<_>>()
-            .join(" "),
-    }
-}
-
-fn load_exe_label(exe: &str, settings_path: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(settings_path).ok()?;
-    let settings: crate::models::AppSettings = serde_json::from_str(&text).ok()?;
-
-    // Try an exact key lookup first
-    if let Some(v) = settings.exe_labels.get(exe) {
-        return Some(v.clone());
-    }
-
-    // Normalize for case-insensitive matching and be tolerant of missing/extra ".exe" suffix
-    let target = exe.to_lowercase();
-    let target_no_ext = target.trim_end_matches(".exe");
-
-    for (k, v) in settings.exe_labels.iter() {
-        let key = k.to_lowercase();
-        let key_no_ext = key.trim_end_matches(".exe");
-
-        if key == target || key_no_ext == target_no_ext || key == target_no_ext || key_no_ext == target {
-            return Some(v.clone());
-        }
-    }
-
-    None
-}
-
-fn capitalize(value: &str) -> String {
-    let mut chars = value.chars();
-    match chars.next() {
-        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-        None => String::new(),
-    }
+    Some(String::from_utf16_lossy(&buffer[..size as usize]))
 }
