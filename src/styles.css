@@ -686,6 +686,7 @@ select {
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
+  padding: 0 30px; /* ADD THIS */
 }
 
 .settings-panel {
@@ -1128,9 +1129,7 @@ select {
 }
 
 .settings-field {
-  display: grid;
-  gap: 8px;
-}
+
 
 .settings-field span {
   color: #cfd5dd;
@@ -1177,4 +1176,5 @@ select {
   .settings-icon-button {
     transition: none;
   }
+}
 }

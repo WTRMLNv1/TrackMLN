@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::models::{AppSettings, default_exe_labels};
 
 pub const DEFAULT_HOTKEY: &str = "control+shift+Space";
-pub const DEFAULT_BLUR_PERCENT: u8 = 100;
+pub const DEFAULT_BLUR_PERCENT: u8 = 40;
 pub const MAX_BLUR_PERCENT: u8 = 100;
 pub const DEFAULT_MATERIAL: &str = "mica";
 

@@ -606,28 +606,32 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
         </div>
 
         <div className="settings-footer">
-          <button
-            ref={labelButtonRef}
-            className={`settings-button settings-button--accent settings-button--manage${isMorphingFromManage ? " is-hidden-for-morph" : ""}`}
-            disabled={isSavingExeLabels || modalView !== "none" || morphState !== null}
-            onClick={openLabelsModal}
-            type="button"
-          >
-            Manage Exe Labels
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <button
+              ref={labelButtonRef}
+              className={`settings-button settings-button--accent settings-button--manage${isMorphingFromManage ? " is-hidden-for-morph" : ""}`}
+              disabled={isSavingExeLabels || modalView !== "none" || morphState !== null}
+              onClick={openLabelsModal}
+              type="button"
+            >
+              Manage Exe Labels
+            </button>
+            {message ? <p className="settings-status" style={{ margin: 0 }}>{message}</p> : null}
+          </div>
 
           <p className="settings-storage">
-            Data is stored in <span title={storageLocation || "Loading storage location..."}>{storageLocation || "Loading storage location..."}</span>
+            Data is stored in{" "}
+            <span title={storageLocation || "Loading storage location..."}>
+              {storageLocation || "Loading storage location..."}
+            </span>
           </p>
         </div>
 
-        {message ? <p className="settings-status">{message}</p> : null}
+        <div className="settings-modal-anchor" aria-hidden="true">
+          <div className="settings-modal-card settings-modal-card--labels" ref={labelsModalCardRef} />
+          <div className="settings-modal-card settings-modal-card--editor" ref={editorModalCardRef} />
+        </div>
       </article>
-
-      <div className="settings-modal-anchor" aria-hidden="true">
-        <div className="settings-modal-card settings-modal-card--labels" ref={labelsModalCardRef} />
-        <div className="settings-modal-card settings-modal-card--editor" ref={editorModalCardRef} />
-      </div>
 
       {morphState ? (
         <motion.div

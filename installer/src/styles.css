@@ -142,10 +142,11 @@ button {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(34px) saturate(145%);
   border-radius: 28px;
+  overflow: hidden;
 }
 
 .installer-sidebar {
-  padding: 24px 20px 24px 24px;
+  padding: 24px 16px 24px 24px; /* was 24px 20px 24px 24px, reduce right padding */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -350,7 +351,13 @@ code {
 .installer-sidebar::-webkit-scrollbar,
 .installer-card::-webkit-scrollbar,
 .status-panel::-webkit-scrollbar {
-  width: 10px;
+  width: 4px;
+}
+
+.installer-sidebar::-webkit-scrollbar-button,
+.installer-card::-webkit-scrollbar-button,
+.status-panel::-webkit-scrollbar-button {
+  display: none;
 }
 
 .installer-sidebar::-webkit-scrollbar-track,
