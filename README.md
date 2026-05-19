@@ -31,14 +31,14 @@ It runs as a Tauri app with a React frontend, watches the currently focused wind
   - most-used apps across the last 7 days
   - daily usage trend vs current and previous week averages
   - per-day app breakdown
-- `Settings` screen for changing the global shortcut and adjusting glass blur/opacity strength
+- `Settings` screen for changing the global shortcut, adjusting glass blur/opacity strength, and customizing app names
 - Two visual modes: **Mica** (default — minimalist, zero GPU) and **Liquid Glass** (more depth and animation, negligibly low GPU)
 - Runs from the system tray, show/hide with a hotkey (`Ctrl + Shift + Space` by default)
 - Comes with a separate installer app so you don't have to deal with any of that yourself
 
 ## How to Download
 
-Just want it now? Download the latest installer directly [here](https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.1.0/trackmln-installer-v1.1.0.exe).
+Just want it now? Download the latest installer directly [here](https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.0/trackmln-installer-v1.2.0.exe).
 
 Or grab it from the [Releases](https://github.com/WTRMLNv1/TrackMLN/releases) page — look for `trackmln-installer-v1.x.x.exe` in the Assets section.
 
@@ -63,6 +63,16 @@ To disable auto-startup: `Settings → Apps → Startup Apps → TrackMLN → Of
 
 ## What's New
 
+### v1.2.0
+- Added editable app name labels in `Settings`, so exe-based names can now be customized without changing tracked history
+- Refactored app tracking to use normalized executable paths as the internal app identity
+- Prevented renamed app labels from splitting usage history into separate apps
+- Added app-name resolution cache for per-path app names and metadata reuse across launches
+- Added Windows executable metadata lookup for friendlier app names when available
+- Added AppxManifest parsing for MSIX / Windows Store apps to resolve names like `ChatGPT` and `TradingView` correctly
+- Kept existing exe-name prettification as the final fallback when metadata is unavailable
+- Preserved full paths as internal-only data so normal UI continues showing friendly app names instead of raw paths
+
 ### v1.1.0
 - Blur slider now works — adjusts opacity and blur of cards and sidebar
 - Added **Mica** and **Liquid Glass** visual modes (switchable in Settings)
@@ -76,6 +86,7 @@ To disable auto-startup: `Settings → Apps → Startup Apps → TrackMLN → Of
 
 ### v1.0.0
 - Initial release
+
 ## Screenshots
 
 ### Daily View
@@ -166,26 +177,26 @@ TrackMLN is intentionally local and simple for now.
 
 The Rust backend polls the active foreground window every second. When the focused executable changes, it writes the previous session to the local database with the app name, start time, and end time.
 
-Some executable names get normalized into friendlier labels:
+App names are resolved in this order:
+1. **Exe Labels** — your custom names from Settings, checked first
+2. **AppxManifest** — for MSIX / Windows Store apps like `ChatGPT` or `TradingView`
+3. **Version info** — Windows executable metadata for friendlier names
+4. **Prettify fallback** — capitalizes, strips `.exe`, turns `-`, `_`, `.` into spaces
 
-- `javaw.exe` → `Minecraft`
-- `explorer.exe` → `File Explorer`
-- `whatsapp.exe` → `WhatsApp`
-
-More normalizations coming — this list will eventually be editable in Settings.
+Apps are tracked by their full executable path internally, so renaming an app in Settings won't split its history.
 
 Idle and unknown windows are filtered out of the dashboard views.
 
 ## Known Bugs
 
-No known bugs as of v1.1.0. If something breaks, [open an issue](https://github.com/WTRMLNv1/TrackMLN/issues).
+No known bugs as of v1.2.0. If something breaks, [open an issue](https://github.com/WTRMLNv1/TrackMLN/issues).
 
 ## Local Data
 
 TrackMLN stores everything in the Tauri app data directory:
 
 - `trackmln.db` — session history and goals
-- `settings.json` — global shortcut and blur percentage
+- `settings.json` — global shortcut, blur percentage, and exe labels
 
 ## Default Behavior
 
@@ -195,7 +206,6 @@ TrackMLN stores everything in the Tauri app data directory:
 
 ## Planned
 
-- Editable app name normalizations
 - In-app goal editing UI (backend already has it, UI doesn't yet)
 - Notifications and limit enforcement (same deal)
 
