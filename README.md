@@ -1,5 +1,5 @@
 # TrackMLN
-
+A Melogne Studio project.
 <p align="left">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/OS-badge.svg" height="30">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/version-badge.svg" height="30">
@@ -286,4 +286,5 @@ See [LICENSE](./LICENSE) for full terms.
 
 ---
 
-Made with 💚, Debugged with 😭 by [WTRMLN](https://github.com/WTRMLNv1)
+Made with 💚, Debugged with 😭 by [WTRMLN](https://github.com/WTRMLNv1) @ Melogne Studio
+© 2026 Melogne Studio
