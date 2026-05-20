@@ -41,9 +41,21 @@ It runs as a Tauri app with a React frontend, watches the currently focused wind
 
 ## How to Download
 
-Just want it now? Download the latest installer directly [here](https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.0/trackmln-installer-v1.2.0.exe).
+Just want it now? Click the download button
 
-Or grab it from the [Releases](https://github.com/WTRMLNv1/TrackMLN/releases) page — look for `trackmln-installer-v1.x.x.exe` in the Assets section.
+Or grab it from the Releases page — look for `trackmln-installer-v1.x.x.exe` in the Assets section.
+
+<p align="left">
+  <a href="https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.0/trackmln-installer-v1.2.0.exe">
+    <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/download_button.svg" height="30">
+  </a>
+</p>
+
+<p align="left">
+  <a href="https://github.com/WTRMLNv1/TrackMLN/releases">
+    <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/releases-page.svg" height="30">
+  </a>
+</p>
 
 > ⚠️ Do **not** install `trackmln-main-v1.x.x.exe` — it's not intended for normal use and won't show up as an app without manual setup.
 
