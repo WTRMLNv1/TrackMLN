@@ -19,7 +19,11 @@ TrackMLN is a Windows desktop app for lightweight screen-time tracking.
 
 It runs as a Tauri app with a React frontend, watches the currently focused window, logs usage locally, and shows the data in a full-screen glass-style dashboard you can toggle with a global shortcut.
 
-> ⚠️ Windows only. (Because I don't have MacOS or Linux 🥀. I won't download Linux for 1 single repo)
+### ⚠️Common "bugs" for people who don't read the readme and go straight to downloading
+1. **Does not** open directly by clicking it through windows start menu. **Use Hotkey or system tray** Control + Shift + Space
+2. It is **NOT** a virus. It costs money and alot of time to buy a certificate to stop that from happening, as a hobby dev, I cannot buy that.
+
+> ℹ️ Windows only. (Because I don't have MacOS or Linux 🥀. I won't download Linux for 1 single repo)
 
 ## What It Does
 
@@ -204,7 +208,15 @@ Idle and unknown windows are filtered out of the dashboard views.
 
 ## Known Bugs
 
-No known bugs as of v1.2.0. If something breaks, [open an issue](https://github.com/WTRMLNv1/TrackMLN/issues).
+I haven't found any major bugs in v1.2.0 yet. If something explodes, please open an issue. :')
+
+
+<p align="left">
+  <a href="https://github.com/WTRMLNv1/TrackMLN/issues">
+    <img src="https://github.com/WTRMLNv1/WTRMLNv1/blob/main/TrackMLN-assets/badges/report-a-bug.svg" height="30">
+  </a>
+</p>
+
 
 ## Local Data
 
