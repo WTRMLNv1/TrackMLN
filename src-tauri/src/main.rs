@@ -28,6 +28,7 @@ pub struct AppState {
     pub settings: Arc<Mutex<AppSettings>>,
     pub settings_path: PathBuf,
     pub app_name_resolver: Arc<Mutex<AppNameResolver>>,
+    pub limit_runtime: Arc<Mutex<tracker::LimitRuntime>>,
 }
 
 fn main() {
@@ -36,8 +37,13 @@ fn main() {
             commands::get_today_totals,
             commands::get_week_dashboard,
             commands::get_hourly_today,
+            commands::get_goals,
+            commands::get_goal_candidates,
             commands::get_settings,
             commands::get_storage_location,
+            commands::save_goal,
+            commands::delete_goal,
+            commands::snooze_goal,
             commands::set_hotkey,
             commands::reset_hotkey,
             commands::set_blur_percent,
@@ -61,6 +67,7 @@ fn main() {
                 AppNameResolver::new(default_cache_path(&data_dir), settings.exe_labels.clone())
                     .expect("failed to initialize app name resolver"),
             ));
+            let limit_runtime = Arc::new(Mutex::new(tracker::LimitRuntime::default()));
             let tracker_db = db.clone();
             let main_window = app
                 .get_webview_window("main")
@@ -79,13 +86,14 @@ fn main() {
                 settings: settings_state.clone(),
                 settings_path: settings_path.clone(),
                 app_name_resolver: resolver.clone(),
+                limit_runtime: limit_runtime.clone(),
             });
             apply_window_glass(&main_window);
             configure_main_window(&main_window)?;
             setup_tray(app.handle())?;
             let _ = main_window.hide();
             setup_global_shortcut(app.handle(), &settings.hotkey)?;
-            tracker::start_tracker(tracker_db, resolver);
+            tracker::start_tracker(tracker_db, resolver, limit_runtime, app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())

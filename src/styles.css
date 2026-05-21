@@ -443,7 +443,8 @@ select {
 
 .today-layout,
 .week-layout,
-.settings-layout {
+.settings-layout,
+.goals-layout {
   position: relative;
   width: 100%;
   height: 100%;
@@ -457,6 +458,7 @@ select {
 .week-chart-card { left: 741px; top: 72px; width: 670px; height: 522px; }
 .week-distribution-card { left: 72px; top: 642px; width: 1339px; height: 343px; }
 .settings-card { left: 92px; top: 48px; width: 1410px; height: 920px; }
+.goals-card { left: 92px; top: 48px; width: 1410px; height: 920px; }
 
 .card-header {
   margin-bottom: 22px;
@@ -700,6 +702,160 @@ select {
   padding: 22px 24px;
   transition: border-color 200ms ease, background 200ms ease;
   isolation: isolate;
+}
+
+.goals-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.9fr;
+  gap: 22px;
+  height: calc(100% - 92px);
+}
+
+.goals-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  padding: 26px;
+  border-radius: 28px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-top-color: var(--panel-border-top);
+  backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturation)) brightness(var(--panel-brightness));
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--panel-saturation)) brightness(var(--panel-brightness));
+}
+
+.goals-panel__header h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.goals-panel__header p,
+.goal-row p,
+.goal-overlay__copy {
+  margin: 0;
+  color: rgba(233, 237, 243, 0.72);
+  line-height: 1.5;
+}
+
+.goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.goal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: var(--row-bg);
+  border: 1px solid var(--row-border);
+  border-top-color: var(--row-border-top);
+}
+
+.goal-row strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 17px;
+}
+
+.goal-row__actions,
+.goals-toggle-row,
+.goals-threshold-grid,
+.goal-overlay__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.goals-threshold-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.goals-input,
+.goals-select {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: #eef2f7;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+
+.goals-input::placeholder {
+  color: rgba(233, 237, 243, 0.4);
+}
+
+.settings-button--danger {
+  background: linear-gradient(135deg, rgba(186, 95, 95, 0.24), rgba(120, 34, 34, 0.12));
+  border-color: rgba(255, 180, 180, 0.18);
+}
+
+.goal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px;
+}
+
+.goal-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top, rgba(234, 205, 170, 0.18), transparent 32%),
+    rgba(8, 10, 16, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.goal-overlay__card {
+  position: relative;
+  width: min(760px, 100%);
+  padding: 34px 36px;
+  border-radius: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: goal-overlay-in 260ms ease-out;
+}
+
+.goal-overlay__card h2 {
+  margin: 0;
+  font-size: 42px;
+  line-height: 1.05;
+}
+
+@keyframes goal-overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 1200px) {
+  .goals-grid,
+  .goals-threshold-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .goal-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .settings-panel::before {

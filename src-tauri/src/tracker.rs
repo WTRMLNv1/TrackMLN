@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -6,6 +6,8 @@ use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Local};
 use crate::app_names::{AppNameResolver, ResolvedApp};
+use crate::models::{Goal, GoalAlertPayload};
+use tauri::{AppHandle, Emitter, Manager};
 use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::Threading::{
@@ -25,18 +27,46 @@ use crate::db::{self, SharedDb};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const MAX_SESSION_GAP: Duration = Duration::from_secs(4);
+const ANNOY_REPEAT_INTERVAL_MINUTES: i64 = 10;
 
 // Shared flag — true = screen is on, false = screen is off
 static SCREEN_ON: AtomicBool = AtomicBool::new(true);
 
-pub fn start_tracker(db: SharedDb, app_name_resolver: Arc<Mutex<AppNameResolver>>) {
+#[derive(Debug, Default)]
+pub struct GoalRuntimeState {
+    pub warn_sent_on: Option<String>,
+    pub annoy_shown_on: Option<String>,
+    pub last_annoy_notification_at: Option<i64>,
+    pub snoozed_until: Option<i64>,
+}
+
+#[derive(Debug, Default)]
+pub struct LimitRuntime {
+    pub goal_states: HashMap<i64, GoalRuntimeState>,
+}
+
+impl LimitRuntime {
+    pub fn snooze(&mut self, goal_id: i64, minutes: i64) {
+        let state = self.goal_states.entry(goal_id).or_default();
+        state.snoozed_until = Some(Local::now().timestamp() + minutes * 60);
+        state.annoy_shown_on = None;
+        state.last_annoy_notification_at = None;
+    }
+}
+
+pub fn start_tracker(
+    db: SharedDb,
+    app_name_resolver: Arc<Mutex<AppNameResolver>>,
+    limit_runtime: Arc<Mutex<LimitRuntime>>,
+    app_handle: AppHandle,
+) {
     // Spin up the power monitor on its own thread (needs its own message loop)
     thread::spawn(|| {
         run_power_monitor();
     });
 
     thread::spawn(move || {
-        let mut tracker = Tracker::new(db, app_name_resolver);
+        let mut tracker = Tracker::new(db, app_name_resolver, limit_runtime, app_handle);
         tracker.run();
     });
 }
@@ -114,25 +144,32 @@ unsafe extern "system" fn power_wnd_proc(
 struct Tracker {
     db: SharedDb,
     app_name_resolver: Arc<Mutex<AppNameResolver>>,
+    limit_runtime: Arc<Mutex<LimitRuntime>>,
+    app_handle: AppHandle,
     current_identity: Option<String>,
     current_exe_name: Option<String>,
     current_app: Option<String>,
     session_start: Option<DateTime<Local>>,
     last_tick: Instant,
-    notified: HashSet<String>,
 }
 
 impl Tracker {
-    fn new(db: SharedDb, app_name_resolver: Arc<Mutex<AppNameResolver>>) -> Self {
+    fn new(
+        db: SharedDb,
+        app_name_resolver: Arc<Mutex<AppNameResolver>>,
+        limit_runtime: Arc<Mutex<LimitRuntime>>,
+        app_handle: AppHandle,
+    ) -> Self {
         Self {
             db,
             app_name_resolver,
+            limit_runtime,
+            app_handle,
             current_identity: None,
             current_exe_name: None,
             current_app: None,
             session_start: None,
             last_tick: Instant::now(),
-            notified: HashSet::new(),
         }
     }
 
@@ -172,7 +209,7 @@ impl Tracker {
             self.session_start = Some(Local::now());
         }
 
-        self.check_limit(&resolved.app_name)?;
+        self.check_limits()?;
         self
             .app_name_resolver
             .lock()
@@ -214,20 +251,180 @@ impl Tracker {
         Ok(())
     }
 
-    fn check_limit(&mut self, app_name: &str) -> Result<(), String> {
-        if self.notified.contains(app_name) {
-            return Ok(());
+    fn check_limits(&mut self) -> Result<(), String> {
+        let connection = self.db.lock().map_err(|err| err.to_string())?;
+        let goals = db::get_goals(&connection).map_err(|err| err.to_string())?;
+        let persisted_total = db::get_today_total(&connection).map_err(|err| err.to_string())?;
+        let now = Local::now();
+        let today_key = now.format("%Y-%m-%d").to_string();
+        let live_total = self.live_elapsed_for_total(now);
+        let current_identity = self.current_identity.clone();
+        let current_app_name = self.current_app.clone();
+        let mut goal_totals = HashMap::new();
+
+        for goal in &goals {
+            let total = if goal.target_kind == "total" {
+                persisted_total + live_total
+            } else {
+                let mut value = db::get_today_total_for_identity(&connection, &goal.target_value)
+                    .map_err(|err| err.to_string())?;
+                if current_identity.as_deref() == Some(goal.target_value.as_str()) {
+                    value += self.live_elapsed_for_current(now);
+                }
+                value
+            };
+            goal_totals.insert(goal.id, total);
+        }
+        drop(connection);
+
+        let mut runtime = self.limit_runtime.lock().map_err(|err| err.to_string())?;
+        for goal in goals {
+            let state = runtime.goal_states.entry(goal.id).or_default();
+            if state.warn_sent_on.as_deref() != Some(today_key.as_str()) {
+                state.warn_sent_on = None;
+            }
+            if state.annoy_shown_on.as_deref() != Some(today_key.as_str()) {
+                state.annoy_shown_on = None;
+                state.last_annoy_notification_at = None;
+            }
+
+            let mut total = goal_totals.get(&goal.id).copied().unwrap_or(0);
+
+            if goal.target_kind != "total" && goal.target_value == "idle" {
+                total = 0;
+            }
+
+            if let Some(warn_seconds) = goal.warn_seconds {
+                if total >= warn_seconds && state.warn_sent_on.is_none() {
+                    state.warn_sent_on = Some(today_key.clone());
+                    self.emit_goal_alert(
+                        &goal,
+                        total,
+                        warn_seconds,
+                        "warn",
+                        false,
+                        current_identity.as_deref(),
+                        current_app_name.as_deref(),
+                    );
+                }
+            }
+
+            let Some(annoy_seconds) = goal.annoy_seconds else {
+                continue;
+            };
+
+            if total < annoy_seconds {
+                state.annoy_shown_on = None;
+                state.last_annoy_notification_at = None;
+                state.snoozed_until = None;
+                continue;
+            }
+
+            if state.snoozed_until.map(|until| until > now.timestamp()).unwrap_or(false) {
+                continue;
+            }
+
+            if state.annoy_shown_on.is_none() {
+                state.annoy_shown_on = Some(today_key.clone());
+                state.last_annoy_notification_at = Some(now.timestamp());
+                self.emit_goal_alert(
+                    &goal,
+                    total,
+                    annoy_seconds,
+                    "annoy",
+                    true,
+                    current_identity.as_deref(),
+                    current_app_name.as_deref(),
+                );
+                self.show_overlay_window();
+                continue;
+            }
+
+            let should_repeat = state
+                .last_annoy_notification_at
+                .map(|timestamp| now.timestamp() - timestamp >= ANNOY_REPEAT_INTERVAL_MINUTES * 60)
+                .unwrap_or(true);
+
+            if should_repeat {
+                state.last_annoy_notification_at = Some(now.timestamp());
+                self.emit_goal_alert(
+                    &goal,
+                    total,
+                    annoy_seconds,
+                    "annoy",
+                    false,
+                    current_identity.as_deref(),
+                    current_app_name.as_deref(),
+                );
+            }
         }
 
-        let connection = self.db.lock().map_err(|err| err.to_string())?;
-        let Some(limit) = db::get_goal(&connection, app_name).map_err(|err| err.to_string())? else {
-            return Ok(());
-        };
-        let total = db::get_today_total_for(&connection, app_name).map_err(|err| err.to_string())?;
-        if total >= limit {
-            self.notified.insert(app_name.to_string());
-        }
         Ok(())
+    }
+
+    fn live_elapsed_for_current(&self, now: DateTime<Local>) -> i64 {
+        self.session_start
+            .map(|start| (now.timestamp() - start.timestamp()).max(0))
+            .unwrap_or(0)
+    }
+
+    fn live_elapsed_for_total(&self, now: DateTime<Local>) -> i64 {
+        match self.current_identity.as_deref() {
+            Some("idle") | Some("unknown") | None => 0,
+            Some(_) => self.live_elapsed_for_current(now),
+        }
+    }
+
+    fn emit_goal_alert(
+        &self,
+        goal: &Goal,
+        total_seconds: i64,
+        threshold_seconds: i64,
+        threshold: &str,
+        show_overlay: bool,
+        current_identity: Option<&str>,
+        current_app_name: Option<&str>,
+    ) {
+        let label = if goal.target_kind == "total" {
+            "Total screen time".to_string()
+        } else {
+            current_app_name
+                .filter(|_| current_identity == Some(goal.target_value.as_str()))
+                .map(str::to_string)
+                .unwrap_or_else(|| self.resolve_goal_label(goal.target_value.as_str()))
+        };
+
+        let payload = GoalAlertPayload {
+            goal_id: goal.id,
+            target_kind: goal.target_kind.clone(),
+            target_value: goal.target_value.clone(),
+            label,
+            threshold: threshold.to_string(),
+            total_seconds,
+            threshold_seconds,
+            repeat_minutes: ANNOY_REPEAT_INTERVAL_MINUTES,
+            show_overlay,
+        };
+
+        let _ = self.app_handle.emit("goal-alert", payload);
+    }
+
+    fn resolve_goal_label(&self, target_value: &str) -> String {
+        self.app_name_resolver
+            .lock()
+            .ok()
+            .map(|mut resolver| resolver.resolve_app_name(target_value).app_name)
+            .unwrap_or_else(|| target_value.to_string())
+    }
+
+    fn show_overlay_window(&self) {
+        let Some(window) = self.app_handle.get_webview_window("main") else {
+            return;
+        };
+
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
     }
 }
 

@@ -65,3 +65,46 @@ pub struct WeekData {
     pub previous_week_average: f64,
     pub top_app: Option<AppTotal>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Goal {
+    pub id: i64,
+    pub target_kind: String,
+    pub target_value: String,
+    pub label: String,
+    pub warn_seconds: Option<i64>,
+    pub annoy_seconds: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GoalDraft {
+    pub id: Option<i64>,
+    pub target_kind: String,
+    pub target_value: String,
+    pub warn_seconds: Option<i64>,
+    pub annoy_seconds: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GoalCandidate {
+    pub app_identity: String,
+    pub app_name: String,
+    pub total_seconds: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GoalAlertPayload {
+    pub goal_id: i64,
+    pub target_kind: String,
+    pub target_value: String,
+    pub label: String,
+    pub threshold: String,
+    pub total_seconds: i64,
+    pub threshold_seconds: i64,
+    pub repeat_minutes: i64,
+    pub show_overlay: bool,
+}

@@ -1,12 +1,13 @@
 const tabs = [
   { id: "today", label: "Today" },
   { id: "week", label: "Week" },
+  { id: "goals", label: "Goals" },
   { id: "settings", label: "Settings" }
 ] as const;
 
 type SidebarProps = {
   activeTab: string;
-  onChange: (tab: "today" | "week" | "settings") => void;
+  onChange: (tab: "today" | "week" | "goals" | "settings") => void;
 };
 
 export function Sidebar({ activeTab, onChange }: SidebarProps) {

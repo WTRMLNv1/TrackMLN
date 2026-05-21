@@ -5,7 +5,9 @@ use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Duration, Local, LocalResult, NaiveDate, TimeZone};
 use rusqlite::{params, Connection};
 
-use crate::models::{AppTotal, HourlyData, WeekData, WeekDay};
+use crate::models::{AppTotal, Goal, GoalCandidate, GoalDraft, HourlyData, WeekData, WeekDay};
+
+pub const TOTAL_GOAL_TARGET: &str = "__total__";
 
 pub type SharedDb = Arc<Mutex<Connection>>;
 
@@ -49,6 +51,9 @@ pub fn init_schema(connection: &Connection) -> rusqlite::Result<()> {
 
     ensure_column(connection, "sessions", "app_identity", "TEXT")?;
     ensure_column(connection, "sessions", "exe_name", "TEXT")?;
+    ensure_column(connection, "goals", "target_kind", "TEXT NOT NULL DEFAULT 'app'")?;
+    ensure_column(connection, "goals", "warn_seconds", "INTEGER")?;
+    ensure_column(connection, "goals", "annoy_seconds", "INTEGER")?;
     Ok(())
 }
 
@@ -175,37 +180,158 @@ pub fn get_hourly_today(connection: &Connection) -> rusqlite::Result<Vec<HourlyD
     Ok(buckets)
 }
 
-pub fn get_goal(connection: &Connection, app_name: &str) -> rusqlite::Result<Option<i64>> {
-    let mut statement =
-        connection.prepare("SELECT daily_limit FROM goals WHERE app_name = ?1 LIMIT 1")?;
-    let mut rows = statement.query(params![app_name])?;
-    match rows.next()? {
-        Some(row) => Ok(Some(row.get(0)?)),
-        None => Ok(None),
-    }
+pub fn get_goals(connection: &Connection) -> rusqlite::Result<Vec<Goal>> {
+    let mut statement = connection.prepare(
+        "
+        SELECT id,
+               target_kind,
+               app_name,
+               warn_seconds,
+               annoy_seconds,
+               daily_limit
+        FROM goals
+        ORDER BY target_kind ASC, app_name COLLATE NOCASE ASC
+        ",
+    )?;
+
+    let goals = statement
+        .query_map([], |row| {
+            let target_kind: String = row.get(1)?;
+            let target_value: String = row.get(2)?;
+            let warn_seconds: Option<i64> = row.get(3)?;
+            let annoy_seconds: Option<i64> = row.get(4)?;
+            let legacy_limit: i64 = row.get(5)?;
+            Ok(Goal {
+                id: row.get(0)?,
+                label: target_value.clone(),
+                target_kind,
+                target_value,
+                warn_seconds,
+                annoy_seconds: annoy_seconds.or(Some(legacy_limit).filter(|value| *value > 0)),
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    Ok(goals)
 }
 
-pub fn set_goal(connection: &Connection, app_name: &str, daily_limit: i64) -> rusqlite::Result<()> {
-    connection.execute(
-        "
-        INSERT INTO goals (app_name, daily_limit)
-        VALUES (?1, ?2)
-        ON CONFLICT(app_name) DO UPDATE SET daily_limit = excluded.daily_limit
-        ",
-        params![app_name, daily_limit],
-    )?;
+pub fn upsert_goal(connection: &Connection, draft: &GoalDraft) -> rusqlite::Result<()> {
+    let warn_seconds = draft.warn_seconds.filter(|value| *value > 0);
+    let annoy_seconds = draft.annoy_seconds.filter(|value| *value > 0);
+    let legacy_limit = annoy_seconds.unwrap_or(0);
+
+    match draft.id {
+        Some(id) => {
+            connection.execute(
+                "
+                UPDATE goals
+                SET target_kind = ?1,
+                    app_name = ?2,
+                    warn_seconds = ?3,
+                    annoy_seconds = ?4,
+                    daily_limit = ?5
+                WHERE id = ?6
+                ",
+                params![
+                    draft.target_kind,
+                    draft.target_value,
+                    warn_seconds,
+                    annoy_seconds,
+                    legacy_limit,
+                    id
+                ],
+            )?;
+        }
+        None => {
+            connection.execute(
+                "
+                INSERT INTO goals (target_kind, app_name, warn_seconds, annoy_seconds, daily_limit)
+                VALUES (?1, ?2, ?3, ?4, ?5)
+                ON CONFLICT(app_name) DO UPDATE SET
+                    target_kind = excluded.target_kind,
+                    warn_seconds = excluded.warn_seconds,
+                    annoy_seconds = excluded.annoy_seconds,
+                    daily_limit = excluded.daily_limit
+                ",
+                params![
+                    draft.target_kind,
+                    draft.target_value,
+                    warn_seconds,
+                    annoy_seconds,
+                    legacy_limit
+                ],
+            )?;
+        }
+    }
+
     Ok(())
 }
 
-pub fn get_today_total_for(connection: &Connection, app_name: &str) -> rusqlite::Result<i64> {
+pub fn delete_goal(connection: &Connection, id: i64) -> rusqlite::Result<()> {
+    connection.execute("DELETE FROM goals WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn get_goal_candidates(connection: &Connection) -> rusqlite::Result<Vec<GoalCandidate>> {
+    let mut statement = connection.prepare(
+        "
+        SELECT CASE
+                   WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                   ELSE LOWER(app_name)
+               END AS app_identity,
+               MIN(app_name) AS app_name,
+               COALESCE(SUM(end - start), 0) AS total
+        FROM sessions
+        WHERE CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
+        GROUP BY app_identity
+        ORDER BY total DESC, app_identity ASC
+        ",
+    )?;
+
+    let candidates = statement
+        .query_map([], |row| {
+            Ok(GoalCandidate {
+                app_identity: row.get(0)?,
+                app_name: row.get(1)?,
+                total_seconds: row.get(2)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    Ok(candidates)
+}
+
+pub fn get_today_total_for_identity(connection: &Connection, app_identity: &str) -> rusqlite::Result<i64> {
     connection.query_row(
         "
         SELECT COALESCE(SUM(end - start), 0)
         FROM sessions
         WHERE date(start, 'unixepoch', 'localtime') = date('now', 'localtime')
-          AND app_name = ?1
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END = ?1
         ",
-        params![app_name],
+        params![app_identity],
+        |row| row.get(0),
+    )
+}
+
+pub fn get_today_total(connection: &Connection) -> rusqlite::Result<i64> {
+    connection.query_row(
+        "
+        SELECT COALESCE(SUM(end - start), 0)
+        FROM sessions
+        WHERE date(start, 'unixepoch', 'localtime') = date('now', 'localtime')
+          AND CASE
+                  WHEN COALESCE(TRIM(app_identity), '') != '' THEN app_identity
+                  ELSE LOWER(app_name)
+              END NOT IN ('idle', 'unknown')
+        ",
+        [],
         |row| row.get(0),
     )
 }
@@ -353,6 +479,7 @@ pub fn get_week_dashboard(connection: &Connection) -> rusqlite::Result<WeekData>
     })
 }
 
+#[cfg(test)]
 pub fn unix_to_local(timestamp: i64) -> Option<DateTime<Local>> {
     Some(DateTime::from_timestamp(timestamp, 0)?.with_timezone(&Local))
 }

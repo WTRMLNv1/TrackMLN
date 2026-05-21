@@ -30,3 +30,38 @@ export type WeekData = {
   previous_week_average: number;
   top_app: AppTotal | null;
 };
+
+export type Goal = {
+  id: number;
+  targetKind: "app" | "total";
+  targetValue: string;
+  label: string;
+  warnSeconds: number | null;
+  annoySeconds: number | null;
+};
+
+export type GoalDraft = {
+  id?: number | null;
+  targetKind: "app" | "total";
+  targetValue: string;
+  warnSeconds: number | null;
+  annoySeconds: number | null;
+};
+
+export type GoalCandidate = {
+  appIdentity: string;
+  appName: string;
+  totalSeconds: number;
+};
+
+export type GoalAlertPayload = {
+  goalId: number;
+  targetKind: "app" | "total";
+  targetValue: string;
+  label: string;
+  threshold: "warn" | "annoy";
+  totalSeconds: number;
+  thresholdSeconds: number;
+  repeatMinutes: number;
+  showOverlay: boolean;
+};

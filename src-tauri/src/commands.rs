@@ -6,7 +6,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 use crate::app_names::looks_like_exe_path;
 use crate::db;
-use crate::models::{AppSettings, AppTotal, HourlyData, WeekData};
+use crate::models::{AppSettings, AppTotal, Goal, GoalCandidate, GoalDraft, HourlyData, WeekData};
 use crate::settings;
 use crate::AppState;
 
@@ -61,6 +61,70 @@ pub fn get_week_dashboard(state: State<AppState>) -> Result<WeekData, String> {
 pub fn get_hourly_today(state: State<AppState>) -> Result<Vec<HourlyData>, String> {
     let connection = state.db.lock().map_err(|err| err.to_string())?;
     db::get_hourly_today(&connection).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub fn get_goals(state: State<AppState>) -> Result<Vec<Goal>, String> {
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    let mut goals = db::get_goals(&connection).map_err(|err| err.to_string())?;
+    let mut resolver = state
+        .app_name_resolver
+        .lock()
+        .map_err(|err| err.to_string())?;
+
+    for goal in &mut goals {
+        goal.label = present_goal_label(&mut resolver, goal.target_kind.as_str(), goal.target_value.as_str());
+    }
+
+    Ok(goals)
+}
+
+#[tauri::command]
+pub fn get_goal_candidates(state: State<AppState>) -> Result<Vec<GoalCandidate>, String> {
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    let mut candidates = db::get_goal_candidates(&connection).map_err(|err| err.to_string())?;
+    let mut resolver = state
+        .app_name_resolver
+        .lock()
+        .map_err(|err| err.to_string())?;
+
+    for candidate in &mut candidates {
+        if looks_like_exe_path(&candidate.app_identity) {
+            candidate.app_name = resolver.resolve_app_name(&candidate.app_identity).app_name;
+        }
+    }
+
+    Ok(candidates)
+}
+
+#[tauri::command]
+pub fn save_goal(state: State<AppState>, draft: GoalDraft) -> Result<Vec<Goal>, String> {
+    let normalized = normalize_goal_draft(draft)?;
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    db::upsert_goal(&connection, &normalized).map_err(|err| err.to_string())?;
+    drop(connection);
+
+    get_goals(state)
+}
+
+#[tauri::command]
+pub fn delete_goal(state: State<AppState>, goal_id: i64) -> Result<Vec<Goal>, String> {
+    let connection = state.db.lock().map_err(|err| err.to_string())?;
+    db::delete_goal(&connection, goal_id).map_err(|err| err.to_string())?;
+    drop(connection);
+
+    if let Ok(mut runtime) = state.limit_runtime.lock() {
+        runtime.goal_states.remove(&goal_id);
+    }
+
+    get_goals(state)
+}
+
+#[tauri::command]
+pub fn snooze_goal(state: State<AppState>, goal_id: i64) -> Result<(), String> {
+    let mut runtime = state.limit_runtime.lock().map_err(|err| err.to_string())?;
+    runtime.snooze(goal_id, 5);
+    Ok(())
 }
 
 #[tauri::command]
@@ -181,4 +245,43 @@ fn present_app_total(
         app.app_name = resolver.resolve_app_name(&app.app_identity).app_name;
     }
     app
+}
+
+fn present_goal_label(
+    resolver: &mut crate::app_names::AppNameResolver,
+    target_kind: &str,
+    target_value: &str,
+) -> String {
+    if target_kind == "total" || target_value == db::TOTAL_GOAL_TARGET {
+        return "Total screen time".into();
+    }
+
+    if looks_like_exe_path(target_value) {
+        return resolver.resolve_app_name(target_value).app_name;
+    }
+
+    target_value.to_string()
+}
+
+fn normalize_goal_draft(mut draft: GoalDraft) -> Result<GoalDraft, String> {
+    draft.target_kind = draft.target_kind.trim().to_lowercase();
+    draft.target_value = draft.target_value.trim().to_string();
+    draft.warn_seconds = draft.warn_seconds.filter(|value| *value > 0);
+    draft.annoy_seconds = draft.annoy_seconds.filter(|value| *value > 0);
+
+    if draft.target_kind != "app" && draft.target_kind != "total" {
+        return Err("Goal type must be app or total".into());
+    }
+
+    if draft.warn_seconds.is_none() && draft.annoy_seconds.is_none() {
+        return Err("Set at least one threshold".into());
+    }
+
+    if draft.target_kind == "total" {
+        draft.target_value = db::TOTAL_GOAL_TARGET.into();
+    } else if draft.target_value.is_empty() {
+        return Err("Choose an app for this goal".into());
+    }
+
+    Ok(draft)
 }
