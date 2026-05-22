@@ -476,6 +476,23 @@ select {
   font-size: 14px;
 }
 
+.sidebar__brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.sidebar__logo {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.sidebar__brand-row h1 {
+  margin: 0;
+}
+
 .sidebar__nav {
   display: grid;
   gap: 12px;

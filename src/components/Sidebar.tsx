@@ -1,3 +1,5 @@
+import trackmlnLogo from "../../assets/trackmln.svg";
+
 const tabs = [
   { id: "today", label: "Today" },
   { id: "week", label: "Week" },
@@ -14,9 +16,10 @@ export function Sidebar({ activeTab, onChange }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <span className="sidebar__eyebrow">Focus overlay</span>
-        <h1>TrackMLN</h1>
-        <p>Screen time with the old glassy layout, now backed by Rust.</p>
+        <div className="sidebar__brand-row">
+          <h1>TrackMLN</h1>
+        </div>
+        <p className="sidebar__studio">A Melogne Studio app.</p>
       </div>
 
       <nav className="sidebar__nav">
@@ -33,8 +36,8 @@ export function Sidebar({ activeTab, onChange }: SidebarProps) {
       </nav>
 
       <div className="sidebar__footer">
-        <span>Base layout</span>
-        <strong>1920 x 1080</strong>
+        <span>Version</span>
+        <strong>v1.2.1-snapshot.1</strong>
       </div>
     </aside>
   );
