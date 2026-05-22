@@ -495,8 +495,8 @@ impl Tracker {
 
         self.play_alert_sound("warn");
         self.position_warn_window(&window);
-        let _ = window.emit("warn-alert", payload);
         let _ = window.show();
+        let _ = window.emit("warn-alert", payload);
     }
 
     fn show_annoy_alert(
@@ -523,10 +523,10 @@ impl Tracker {
 
         self.play_alert_sound("annoy");
         self.position_annoy_window(&window);
-        let _ = window.emit("annoy-alert", payload);
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
+        let _ = window.emit("annoy-alert", payload);
     }
 
     fn play_alert_sound(&self, threshold: &str) {

@@ -94,6 +94,11 @@ fn main() {
                 app_name_resolver: resolver.clone(),
                 limit_runtime: limit_runtime.clone(),
             });
+            // Hide before applying glass effects — vibrancy calls briefly force
+            // the window visible via DWM compositor redraw on Windows
+            let _ = main_window.hide();
+            let _ = warn_window.hide();
+            let _ = annoy_window.hide();
             apply_window_glass(&main_window);
             apply_window_glass(&warn_window);
             apply_window_glass(&annoy_window);
@@ -101,9 +106,6 @@ fn main() {
             configure_warn_window(&warn_window)?;
             configure_alert_window(&annoy_window)?;
             setup_tray(app.handle())?;
-            let _ = main_window.hide();
-            let _ = warn_window.hide();
-            let _ = annoy_window.hide();
             setup_global_shortcut(app.handle(), &settings.hotkey)?;
             tracker::start_tracker(tracker_db, resolver, limit_runtime, app.handle().clone());
             Ok(())

@@ -5,11 +5,12 @@ import type { GoalAlertPayload } from "../types";
 import { formatLongDuration } from "../utils/format";
 
 const appWindow = getCurrentWindow();
-const AUTO_HIDE_MS = 8000;
+const AUTO_HIDE_MS = 5000;
 
 export function WarnWindow() {
   const [alert, setAlert] = useState<GoalAlertPayload | null>(null);
   const [instanceKey, setInstanceKey] = useState(0);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -17,6 +18,7 @@ export function WarnWindow() {
     void listen<GoalAlertPayload>("warn-alert", (event) => {
       setAlert(event.payload);
       setInstanceKey((value) => value + 1);
+      setVisible(true);
     })
       .then((unlisten) => {
         dispose = unlisten;
@@ -31,22 +33,38 @@ export function WarnWindow() {
   }, []);
 
   useEffect(() => {
-    if (!alert) {
+    if (!visible) {
       return;
     }
 
     const timeout = window.setTimeout(() => {
-      void appWindow.hide();
+      dismiss();
     }, AUTO_HIDE_MS);
 
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [alert, instanceKey]);
+  }, [visible, instanceKey]);
+
+  function dismiss() {
+    setVisible(false);
+    void appWindow.hide();
+  }
+
+  if (!visible) {
+    return <main className="warn-shell" />;
+  }
 
   return (
     <main className="warn-shell">
       <section className="warn-toast glass-card" key={instanceKey}>
+        <button
+          className="warn-toast__close"
+          onClick={dismiss}
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
         <span className="warn-toast__kicker">Warn</span>
         <h2>{alert?.label ?? "Limit warning"}</h2>
         <p>
