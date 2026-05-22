@@ -72,6 +72,12 @@ fn main() {
             let main_window = app
                 .get_webview_window("main")
                 .expect("main window should exist");
+            let warn_window = app
+                .get_webview_window("warn")
+                .expect("warn window should exist");
+            let annoy_window = app
+                .get_webview_window("annoy")
+                .expect("annoy window should exist");
 
             #[cfg(desktop)]
             {
@@ -89,9 +95,15 @@ fn main() {
                 limit_runtime: limit_runtime.clone(),
             });
             apply_window_glass(&main_window);
+            apply_window_glass(&warn_window);
+            apply_window_glass(&annoy_window);
             configure_main_window(&main_window)?;
+            configure_warn_window(&warn_window)?;
+            configure_alert_window(&annoy_window)?;
             setup_tray(app.handle())?;
             let _ = main_window.hide();
+            let _ = warn_window.hide();
+            let _ = annoy_window.hide();
             setup_global_shortcut(app.handle(), &settings.hotkey)?;
             tracker::start_tracker(tracker_db, resolver, limit_runtime, app.handle().clone());
             Ok(())
@@ -140,13 +152,21 @@ fn toggle_main_window(app: &AppHandle) {
 }
 
 fn handle_window_event(window: &Window, event: &WindowEvent) {
+    let label = window.label().to_string();
+
     match event {
         WindowEvent::CloseRequested { api, .. } => {
             api.prevent_close();
-            let _ = window.minimize();
+            if label == "main" {
+                let _ = window.minimize();
+            } else {
+                let _ = window.hide();
+            }
         }
         WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
-            let _ = configure_window(window);
+            if label == "main" {
+                let _ = configure_window(window);
+            }
         }
         _ => {}
     }
@@ -183,6 +203,24 @@ fn configure_window(window: &Window) -> Result<(), Box<dyn Error>> {
 
     window.set_fullscreen(true)?;
     window.set_resizable(false)?;
+    Ok(())
+}
+
+fn configure_warn_window(window: &WebviewWindow) -> Result<(), Box<dyn Error>> {
+    window.set_resizable(false)?;
+    window.set_always_on_top(true)?;
+    window.set_skip_taskbar(true)?;
+    window.set_focusable(false)?;
+    window.set_ignore_cursor_events(true)?;
+    Ok(())
+}
+
+fn configure_alert_window(window: &WebviewWindow) -> Result<(), Box<dyn Error>> {
+    window.set_resizable(false)?;
+    window.set_always_on_top(true)?;
+    window.set_skip_taskbar(true)?;
+    window.set_focusable(true)?;
+    window.set_ignore_cursor_events(false)?;
     Ok(())
 }
 

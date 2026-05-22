@@ -1,15 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { Sidebar } from "./components/Sidebar";
 import { Today } from "./components/Today";
 import { Week } from "./components/Week";
 import { Goals } from "./components/Goals";
-import { GoalOverlay } from "./components/GoalOverlay";
 import { Settings } from "./components/Settings";
+import { WarnWindow } from "./components/WarnWindow";
+import { AnnoyWindow } from "./components/AnnoyWindow";
 import { useDashboardScale } from "./hooks/useDashboardScale";
-import type { AppSettings, GoalAlertPayload } from "./types";
-import { formatLongDuration } from "./utils/format";
+import type { AppSettings } from "./types";
 
 const DEFAULT_SETTINGS: AppSettings = {
   hotkey: "control+shift+Space",
@@ -18,11 +18,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   exeLabels: {}
 };
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<"today" | "week" | "goals" | "settings">("today");
+const appWindow = getCurrentWindow();
+
+function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-  const [goalOverlay, setGoalOverlay] = useState<GoalAlertPayload | null>(null);
-  const { baseHeight, baseWidth, containerRef, scale } = useDashboardScale();
   const blurPercent = Math.max(0, Math.min(100, settings.blurPercent));
 
   useEffect(() => {
@@ -48,44 +47,16 @@ export default function App() {
   }, [settings.material]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--blur-fraction", `${blurPercent / 100}`);
+    document.documentElement.style.setProperty("--blur-fraction", `${blurPercent / 100}`);
   }, [blurPercent]);
 
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission().catch(() => undefined);
-    }
+  return { settings, setSettings };
+}
 
-    let unlisten: (() => void) | undefined;
-
-    void listen<GoalAlertPayload>("goal-alert", (event) => {
-      const payload = event.payload;
-      const title = payload.threshold === "warn" ? "TrackMLN warning" : "TrackMLN limit reached";
-      const body =
-        payload.threshold === "warn"
-          ? `${payload.label} hit ${formatLongDuration(payload.thresholdSeconds)}.`
-          : `${payload.label} is at ${formatLongDuration(payload.totalSeconds)}.`;
-
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(title, { body });
-      }
-
-      if (payload.showOverlay) {
-        setGoalOverlay(payload);
-      }
-    })
-      .then((dispose) => {
-        unlisten = dispose;
-      })
-      .catch((error) => {
-        console.error("Failed to subscribe to goal alerts", error);
-      });
-
-    return () => {
-      unlisten?.();
-    };
-  }, []);
+function DashboardApp() {
+  const [activeTab, setActiveTab] = useState<"today" | "week" | "goals" | "settings">("today");
+  const { settings, setSettings } = useAppSettings();
+  const { baseHeight, baseWidth, containerRef, scale } = useDashboardScale();
 
   return (
     <main className="app-shell">
@@ -109,10 +80,20 @@ export default function App() {
               <Settings settings={settings} onSettingsChange={setSettings} />
             ) : null}
           </section>
-
-          <GoalOverlay alert={goalOverlay} onClose={() => setGoalOverlay(null)} />
         </div>
       </div>
     </main>
   );
+}
+
+export default function App() {
+  if (appWindow.label === "warn") {
+    return <WarnWindow />;
+  }
+
+  if (appWindow.label === "annoy") {
+    return <AnnoyWindow />;
+  }
+
+  return <DashboardApp />;
 }

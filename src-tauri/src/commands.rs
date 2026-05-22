@@ -104,6 +104,12 @@ pub fn save_goal(state: State<AppState>, draft: GoalDraft) -> Result<Vec<Goal>, 
     db::upsert_goal(&connection, &normalized).map_err(|err| err.to_string())?;
     drop(connection);
 
+    if let Some(id) = normalized.id {
+        if let Ok(mut runtime) = state.limit_runtime.lock() {
+            runtime.snooze_counts.insert(id, 0);
+        }
+    }
+
     get_goals(state)
 }
 
@@ -115,15 +121,16 @@ pub fn delete_goal(state: State<AppState>, goal_id: i64) -> Result<Vec<Goal>, St
 
     if let Ok(mut runtime) = state.limit_runtime.lock() {
         runtime.goal_states.remove(&goal_id);
+        runtime.snooze_counts.remove(&goal_id);
     }
 
     get_goals(state)
 }
 
 #[tauri::command]
-pub fn snooze_goal(state: State<AppState>, goal_id: i64) -> Result<(), String> {
+pub fn snooze_goal(state: State<AppState>, goal_id: i64, minutes: u32) -> Result<(), String> {
     let mut runtime = state.limit_runtime.lock().map_err(|err| err.to_string())?;
-    runtime.snooze(goal_id, 5);
+    runtime.snooze(goal_id, minutes as i64);
     Ok(())
 }
 

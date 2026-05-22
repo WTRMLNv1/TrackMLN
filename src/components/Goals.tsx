@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useState } from "react";
+import { AppSelect } from "./AppSelect";
 import type { Goal, GoalCandidate, GoalDraft } from "../types";
 import { formatLongDuration } from "../utils/format";
 
@@ -204,18 +205,12 @@ export function Goals() {
             {draft.targetKind === "app" ? (
               <label className="settings-field">
                 <span>App</span>
-                <select
-                  className="goals-select"
-                  onChange={(event) => setDraft((current) => ({ ...current, targetValue: event.target.value }))}
+                <AppSelect
+                  options={availableCandidates.map((c) => ({ value: c.appIdentity, label: c.appName, sublabel: formatLongDuration(c.totalSeconds) }))}
                   value={draft.targetValue}
-                >
-                  <option value="">Choose a tracked app</option>
-                  {availableCandidates.map((candidate) => (
-                    <option key={candidate.appIdentity} value={candidate.appIdentity}>
-                      {candidate.appName} · {formatLongDuration(candidate.totalSeconds)}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setDraft((current) => ({ ...current, targetValue: val }))}
+                  placeholder="Choose a tracked app"
+                />
               </label>
             ) : null}
 

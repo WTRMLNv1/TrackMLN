@@ -9,13 +9,16 @@ use crate::app_names::{AppNameResolver, ResolvedApp};
 use crate::models::{Goal, GoalAlertPayload};
 use tauri::{AppHandle, Emitter, Manager};
 use windows::core::{PCWSTR, PWSTR};
-use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+use windows::Win32::System::Diagnostics::Debug::MessageBeep;
 use windows::Win32::System::Threading::{
     OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow,
-    GetMessageW, GetWindowThreadProcessId, MSG, RegisterClassW,
+    GetMessageW, GetWindowThreadProcessId, MSG, RegisterClassW, MB_ICONERROR,
+    MB_ICONWARNING,
     WINDOW_EX_STYLE, WNDCLASSW, WS_OVERLAPPEDWINDOW,
 };
 use windows::Win32::System::Power::{
@@ -43,6 +46,7 @@ pub struct GoalRuntimeState {
 #[derive(Debug, Default)]
 pub struct LimitRuntime {
     pub goal_states: HashMap<i64, GoalRuntimeState>,
+    pub snooze_counts: HashMap<i64, u32>,
 }
 
 impl LimitRuntime {
@@ -51,6 +55,7 @@ impl LimitRuntime {
         state.snoozed_until = Some(Local::now().timestamp() + minutes * 60);
         state.annoy_shown_on = None;
         state.last_annoy_notification_at = None;
+        *self.snooze_counts.entry(goal_id).or_insert(0) += 1;
     }
 }
 
@@ -279,13 +284,24 @@ impl Tracker {
 
         let mut runtime = self.limit_runtime.lock().map_err(|err| err.to_string())?;
         for goal in goals {
-            let state = runtime.goal_states.entry(goal.id).or_default();
-            if state.warn_sent_on.as_deref() != Some(today_key.as_str()) {
-                state.warn_sent_on = None;
+            // Normalize state day rollover without holding the state borrow while mutating snooze_counts
+            let mut reset_snooze_on_day = false;
+            {
+                let state = runtime.goal_states.entry(goal.id).or_default();
+                if state.warn_sent_on.as_deref() != Some(today_key.as_str()) {
+                    // reset to None (cleared)
+                    // note: leave as None
+                    state.warn_sent_on = None;
+                }
+                if state.annoy_shown_on.as_deref() != Some(today_key.as_str()) {
+                    state.annoy_shown_on = None;
+                    state.last_annoy_notification_at = None;
+                    reset_snooze_on_day = true;
+                }
             }
-            if state.annoy_shown_on.as_deref() != Some(today_key.as_str()) {
-                state.annoy_shown_on = None;
-                state.last_annoy_notification_at = None;
+
+            if reset_snooze_on_day {
+                runtime.snooze_counts.insert(goal.id, 0);
             }
 
             let mut total = goal_totals.get(&goal.id).copied().unwrap_or(0);
@@ -294,18 +310,31 @@ impl Tracker {
                 total = 0;
             }
 
+            // Prepare snooze_count early (copy) so we don't need to borrow runtime.snooze_counts later
+            let snooze_count = runtime.snooze_counts.get(&goal.id).copied().unwrap_or(0);
+
             if let Some(warn_seconds) = goal.warn_seconds {
-                if total >= warn_seconds && state.warn_sent_on.is_none() {
-                    state.warn_sent_on = Some(today_key.clone());
-                    self.emit_goal_alert(
-                        &goal,
-                        total,
-                        warn_seconds,
-                        "warn",
-                        false,
-                        current_identity.as_deref(),
-                        current_app_name.as_deref(),
-                    );
+                if total >= warn_seconds {
+                    // mutate state only in a scoped block
+                    let mut sent = false;
+                    {
+                        let state = runtime.goal_states.entry(goal.id).or_default();
+                        if state.warn_sent_on.is_none() {
+                            state.warn_sent_on = Some(today_key.clone());
+                            sent = true;
+                        }
+                    }
+
+                    if sent {
+                        self.show_warn_alert(
+                            &goal,
+                            total,
+                            warn_seconds,
+                            current_identity.as_deref(),
+                            current_app_name.as_deref(),
+                            snooze_count,
+                        );
+                    }
                 }
             }
 
@@ -314,47 +343,72 @@ impl Tracker {
             };
 
             if total < annoy_seconds {
-                state.annoy_shown_on = None;
-                state.last_annoy_notification_at = None;
-                state.snoozed_until = None;
+                {
+                    let state = runtime.goal_states.entry(goal.id).or_default();
+                    state.annoy_shown_on = None;
+                    state.last_annoy_notification_at = None;
+                    state.snoozed_until = None;
+                }
+                runtime.snooze_counts.insert(goal.id, 0);
                 continue;
             }
 
-            if state.snoozed_until.map(|until| until > now.timestamp()).unwrap_or(false) {
+            // check if snoozed
+            let is_snoozed = runtime
+                .goal_states
+                .get(&goal.id)
+                .and_then(|s| s.snoozed_until)
+                .map(|until| until > now.timestamp())
+                .unwrap_or(false);
+
+            if is_snoozed {
                 continue;
             }
 
-            if state.annoy_shown_on.is_none() {
-                state.annoy_shown_on = Some(today_key.clone());
-                state.last_annoy_notification_at = Some(now.timestamp());
-                self.emit_goal_alert(
+            // first time annoy shown
+            let mut shown_this_iteration = false;
+            {
+                let mut state = runtime.goal_states.entry(goal.id).or_default();
+                if state.annoy_shown_on.is_none() {
+                    state.annoy_shown_on = Some(today_key.clone());
+                    state.last_annoy_notification_at = Some(now.timestamp());
+                    shown_this_iteration = true;
+                }
+            }
+
+            if shown_this_iteration {
+                let snooze_count = runtime.snooze_counts.get(&goal.id).copied().unwrap_or(0);
+                self.show_annoy_alert(
                     &goal,
                     total,
                     annoy_seconds,
-                    "annoy",
-                    true,
                     current_identity.as_deref(),
                     current_app_name.as_deref(),
+                    snooze_count,
                 );
-                self.show_overlay_window();
                 continue;
             }
 
-            let should_repeat = state
-                .last_annoy_notification_at
+            let should_repeat = runtime
+                .goal_states
+                .get(&goal.id)
+                .and_then(|s| s.last_annoy_notification_at)
                 .map(|timestamp| now.timestamp() - timestamp >= ANNOY_REPEAT_INTERVAL_MINUTES * 60)
                 .unwrap_or(true);
 
             if should_repeat {
-                state.last_annoy_notification_at = Some(now.timestamp());
-                self.emit_goal_alert(
+                {
+                    let mut state = runtime.goal_states.entry(goal.id).or_default();
+                    state.last_annoy_notification_at = Some(now.timestamp());
+                }
+                let snooze_count = runtime.snooze_counts.get(&goal.id).copied().unwrap_or(0);
+                self.show_annoy_alert(
                     &goal,
                     total,
                     annoy_seconds,
-                    "annoy",
-                    false,
                     current_identity.as_deref(),
                     current_app_name.as_deref(),
+                    snooze_count,
                 );
             }
         }
@@ -375,16 +429,16 @@ impl Tracker {
         }
     }
 
-    fn emit_goal_alert(
+    fn build_goal_alert(
         &self,
         goal: &Goal,
         total_seconds: i64,
         threshold_seconds: i64,
         threshold: &str,
-        show_overlay: bool,
         current_identity: Option<&str>,
         current_app_name: Option<&str>,
-    ) {
+        snooze_count: u32,
+    ) -> GoalAlertPayload {
         let label = if goal.target_kind == "total" {
             "Total screen time".to_string()
         } else {
@@ -403,10 +457,10 @@ impl Tracker {
             total_seconds,
             threshold_seconds,
             repeat_minutes: ANNOY_REPEAT_INTERVAL_MINUTES,
-            show_overlay,
+            show_overlay: threshold == "annoy",
+            snooze_count,
         };
-
-        let _ = self.app_handle.emit("goal-alert", payload);
+        payload
     }
 
     fn resolve_goal_label(&self, target_value: &str) -> String {
@@ -417,14 +471,95 @@ impl Tracker {
             .unwrap_or_else(|| target_value.to_string())
     }
 
-    fn show_overlay_window(&self) {
-        let Some(window) = self.app_handle.get_webview_window("main") else {
+    fn show_warn_alert(
+        &self,
+        goal: &Goal,
+        total_seconds: i64,
+        threshold_seconds: i64,
+        current_identity: Option<&str>,
+        current_app_name: Option<&str>,
+        snooze_count: u32,
+    ) {
+        let payload = self.build_goal_alert(
+            goal,
+            total_seconds,
+            threshold_seconds,
+            "warn",
+            current_identity,
+            current_app_name,
+            snooze_count,
+        );
+        let Some(window) = self.app_handle.get_webview_window("warn") else {
             return;
         };
 
+        self.play_alert_sound("warn");
+        self.position_warn_window(&window);
+        let _ = window.emit("warn-alert", payload);
         let _ = window.show();
+    }
+
+    fn show_annoy_alert(
+        &self,
+        goal: &Goal,
+        total_seconds: i64,
+        threshold_seconds: i64,
+        current_identity: Option<&str>,
+        current_app_name: Option<&str>,
+        snooze_count: u32,
+    ) {
+        let payload = self.build_goal_alert(
+            goal,
+            total_seconds,
+            threshold_seconds,
+            "annoy",
+            current_identity,
+            current_app_name,
+            snooze_count,
+        );
+        let Some(window) = self.app_handle.get_webview_window("annoy") else {
+            return;
+        };
+
+        self.play_alert_sound("annoy");
+        self.position_annoy_window(&window);
+        let _ = window.emit("annoy-alert", payload);
         let _ = window.unminimize();
+        let _ = window.show();
         let _ = window.set_focus();
+    }
+
+    fn play_alert_sound(&self, threshold: &str) {
+        unsafe {
+            let tone = if threshold == "warn" { MB_ICONWARNING } else { MB_ICONERROR };
+            let _ = MessageBeep(tone);
+        }
+    }
+
+    fn position_warn_window(&self, window: &tauri::WebviewWindow) {
+        let Some(area) = active_monitor_area() else {
+            return;
+        };
+
+        let width = ((area.work.right - area.work.left) as f64 * 0.19).round().clamp(320.0, 460.0) as i32;
+        let height = ((area.work.bottom - area.work.top) as f64 * 0.14).round().clamp(150.0, 210.0) as i32;
+        let x = area.work.right - width - 26;
+        let y = area.work.bottom - height - 26;
+
+        let _ = window.set_size(tauri::PhysicalSize::new(width as u32, height as u32));
+        let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+    }
+
+    fn position_annoy_window(&self, window: &tauri::WebviewWindow) {
+        let Some(area) = active_monitor_area() else {
+            return;
+        };
+
+        let width = (area.monitor.right - area.monitor.left).max(1);
+        let height = (area.monitor.bottom - area.monitor.top).max(1);
+
+        let _ = window.set_position(tauri::PhysicalPosition::new(area.monitor.left, area.monitor.top));
+        let _ = window.set_size(tauri::PhysicalSize::new(width as u32, height as u32));
     }
 }
 
@@ -493,4 +628,36 @@ fn process_exe_path(process_id: u32) -> Option<String> {
     }
 
     Some(String::from_utf16_lossy(&buffer[..size as usize]))
+}
+
+struct MonitorArea {
+    monitor: RECT,
+    work: RECT,
+}
+
+fn active_monitor_area() -> Option<MonitorArea> {
+    let hwnd = unsafe { GetForegroundWindow() };
+    if hwnd == HWND(std::ptr::null_mut()) {
+        return None;
+    }
+
+    let monitor = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
+    if monitor.0.is_null() {
+        return None;
+    }
+
+    let mut info = MONITORINFO {
+        cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+
+    let ok = unsafe { GetMonitorInfoW(monitor, &mut info as *mut MONITORINFO) }.as_bool();
+    if !ok {
+        return None;
+    }
+
+    Some(MonitorArea {
+        monitor: info.rcMonitor,
+        work: info.rcWork,
+    })
 }

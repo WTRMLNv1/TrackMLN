@@ -27,6 +27,34 @@
         "visible": false,
         "width": 1920,
         "height": 1080
+      },
+      {
+        "label": "warn",
+        "title": "TrackMLN Warning",
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "skipTaskbar": true,
+        "visible": false,
+        "width": 420,
+        "height": 180
+      },
+      {
+        "label": "annoy",
+        "title": "TrackMLN Limit",
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "skipTaskbar": true,
+        "visible": false,
+        "width": 1920,
+        "height": 1080
       }
     ]
   }

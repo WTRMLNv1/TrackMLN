@@ -216,6 +216,14 @@ select {
   background: transparent;
 }
 
+.warn-shell,
+.annoy-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
 .app-shell__backdrop {
   position: absolute;
   inset: 0;
@@ -223,6 +231,130 @@ select {
   pointer-events: none;
   background: var(--app-atmosphere);
   opacity: 0.9;
+}
+
+.warn-toast {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 24px;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(231, 195, 117, 0.16), transparent 58%),
+    var(--surface-bg);
+  animation: warn-slide-in 220ms ease-out;
+}
+
+.warn-toast__kicker,
+.annoy-screen__kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  color: rgba(245, 216, 153, 0.84);
+}
+
+.warn-toast h2,
+.annoy-screen h1 {
+  margin: 0;
+}
+
+.warn-toast h2 {
+  font-size: 28px;
+  line-height: 1.05;
+}
+
+.warn-toast p {
+  margin: 0;
+  color: rgba(238, 242, 247, 0.82);
+  line-height: 1.45;
+  font-size: 14px;
+}
+
+.annoy-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 180, 140, 0.12), transparent 28%),
+    radial-gradient(circle at 50% 120%, rgba(154, 46, 46, 0.2), transparent 38%),
+    rgba(10, 10, 14, 0.78);
+}
+
+.annoy-shell__flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255, 245, 224, 0.22), transparent 48%);
+  animation: annoy-flash 380ms ease-out;
+}
+
+.annoy-screen {
+  width: min(860px, 100%);
+  padding: 38px 42px;
+  border-radius: 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 116, 116, 0.12), transparent 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%),
+    var(--surface-bg);
+  animation: annoy-rise-in 220ms ease-out;
+}
+
+.annoy-screen h1 {
+  font-size: clamp(42px, 5vw, 72px);
+  line-height: 0.98;
+  max-width: 12ch;
+}
+
+.annoy-screen__lead {
+  margin: 0;
+  max-width: 48rem;
+  font-size: 18px;
+  line-height: 1.55;
+  color: rgba(244, 247, 251, 0.82);
+}
+
+.annoy-screen__actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+@keyframes warn-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes annoy-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes annoy-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .app-shell__viewport {
@@ -458,7 +590,7 @@ select {
 .week-chart-card { left: 741px; top: 72px; width: 670px; height: 522px; }
 .week-distribution-card { left: 72px; top: 642px; width: 1339px; height: 343px; }
 .settings-card { left: 92px; top: 48px; width: 1410px; height: 920px; }
-.goals-card { left: 92px; top: 48px; width: 1410px; height: 920px; }
+.goals-card { left: 92px; top: 48px; width: 1410px; height: 920px; overflow: visible; }
 
 .card-header {
   margin-bottom: 22px;
@@ -789,6 +921,173 @@ select {
   outline: none;
 }
 
+/* ── AppSelect ─────────────────────────────────────────────── */
+
+.app-select {
+  position: relative;
+  width: 100%;
+}
+
+.app-select__trigger {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.055);
+  color: #f4f6f9;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+  text-align: left;
+}
+
+.app-select__trigger:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.app-select--open .app-select__trigger {
+  border-color: rgba(214, 199, 166, 0.42);
+  border-top-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(214, 199, 166, 0.16),
+    0 4px 16px rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.app-select__value {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-select__value--placeholder {
+  color: rgba(255, 255, 255, 0.36);
+}
+
+.app-select__chevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 200ms ease, color 160ms ease;
+}
+
+.app-select--open .app-select__chevron {
+  transform: rotate(180deg);
+  color: rgba(214, 199, 166, 0.8);
+}
+
+/* dropdown */
+.app-select__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(255, 255, 255, 0.2);
+  background: rgb(22 25 32 / 0.92);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.38),
+    0 8px 24px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: app-select-drop 160ms cubic-bezier(0.22, 0.68, 0, 1.1);
+  overflow: hidden;
+}
+
+@keyframes app-select-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.app-select__list {
+  max-height: 280px;
+  overflow: hidden auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-select__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-select__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.app-select__option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #e4e8ef;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 130ms ease,
+    border-color 130ms ease;
+}
+
+.app-select__option:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app-select__option--selected {
+  background: linear-gradient(135deg, rgba(214, 199, 166, 0.18), rgba(137, 167, 133, 0.1));
+  border-color: rgba(214, 199, 166, 0.28);
+  color: #fff;
+}
+
+.app-select__option--selected:hover {
+  background: linear-gradient(135deg, rgba(214, 199, 166, 0.24), rgba(137, 167, 133, 0.14));
+}
+
+.app-select__option-label {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-select__option-sublabel {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.38);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+
 .goals-input::placeholder {
   color: rgba(233, 237, 243, 0.4);
 }
@@ -942,7 +1241,7 @@ select {
 
 .settings-button:disabled {
   opacity: 0.6;
-  cursor: wait;
+  cursor: not-allowed;
 }
 
 :root[data-material="liquid"] .settings-button:disabled {

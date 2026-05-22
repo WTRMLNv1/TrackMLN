@@ -64,4 +64,5 @@ export type GoalAlertPayload = {
   thresholdSeconds: number;
   repeatMinutes: number;
   showOverlay: boolean;
+  snoozeCount: number;
 };

@@ -107,4 +107,5 @@ pub struct GoalAlertPayload {
     pub threshold_seconds: i64,
     pub repeat_minutes: i64,
     pub show_overlay: bool,
+    pub snooze_count: u32,
 }
