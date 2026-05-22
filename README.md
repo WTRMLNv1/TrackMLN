@@ -1,8 +1,17 @@
 # TrackMLN
 A Melogne Studio project.
+
 <p align="left">
-  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/studio-badge.svg" height="40">
+  <a href="https://github.com/MelogneStudio">
+    <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/studio-badge.svg" height="40">
+  </a>
+    <a href="https://www.virustotal.com/gui/file/1ca671454ac6d9a414c5477010321a880ca6871c753588eb768c9f49e79e3697">
+    <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/virustotal-badge.svg" height="40">
+  </a>
 </p>
+
+
+
 <p align="left">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/OS-badge.svg" height="30">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/version-badge.svg" height="30">
