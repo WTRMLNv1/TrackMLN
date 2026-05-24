@@ -3656,7 +3656,7 @@ dependencies = [
 
 [[package]]
 name = "trackmln"
-version = "1.2.0"
+version = "1.2.1-snapshot.1"
 dependencies = [
  "chrono",
  "rusqlite",

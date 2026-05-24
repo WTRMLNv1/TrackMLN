@@ -9,7 +9,7 @@ mod tracker;
 
 use app_names::{default_cache_path, AppNameResolver};
 use db::{default_db_path, open_shared_database, SharedDb};
-use models::AppSettings;
+use models::{AppSettings, GoalAlertPayload};
 use settings::{default_settings_path, load_settings, save_settings, DEFAULT_HOTKEY};
 use std::error::Error;
 use std::path::PathBuf;
@@ -29,6 +29,7 @@ pub struct AppState {
     pub settings_path: PathBuf,
     pub app_name_resolver: Arc<Mutex<AppNameResolver>>,
     pub limit_runtime: Arc<Mutex<tracker::LimitRuntime>>,
+    pub pending_alerts: Arc<Mutex<std::collections::HashMap<String, GoalAlertPayload>>>,
 }
 
 fn main() {
@@ -51,6 +52,9 @@ fn main() {
             commands::set_material,
             commands::reset_material,
             commands::set_exe_labels,
+            commands::get_pending_alert,
+            commands::clear_pending_alert,
+            commands::set_warn_clickthrough,
         ])
         .on_window_event(handle_window_event)
         .setup(|app| {
@@ -68,6 +72,7 @@ fn main() {
                     .expect("failed to initialize app name resolver"),
             ));
             let limit_runtime = Arc::new(Mutex::new(tracker::LimitRuntime::default()));
+            let pending_alerts = Arc::new(Mutex::new(std::collections::HashMap::new()));
             let tracker_db = db.clone();
             let main_window = app
                 .get_webview_window("main")
@@ -93,7 +98,13 @@ fn main() {
                 settings_path: settings_path.clone(),
                 app_name_resolver: resolver.clone(),
                 limit_runtime: limit_runtime.clone(),
+                pending_alerts: pending_alerts.clone(),
             });
+            // Hide before applying glass effects — vibrancy calls briefly force
+            // the window visible via DWM compositor redraw on Windows
+            let _ = main_window.hide();
+            let _ = warn_window.hide();
+            let _ = annoy_window.hide();
             apply_window_glass(&main_window);
             apply_window_glass(&warn_window);
             apply_window_glass(&annoy_window);
@@ -101,11 +112,14 @@ fn main() {
             configure_warn_window(&warn_window)?;
             configure_alert_window(&annoy_window)?;
             setup_tray(app.handle())?;
-            let _ = main_window.hide();
-            let _ = warn_window.hide();
-            let _ = annoy_window.hide();
             setup_global_shortcut(app.handle(), &settings.hotkey)?;
-            tracker::start_tracker(tracker_db, resolver, limit_runtime, app.handle().clone());
+            tracker::start_tracker(
+                tracker_db,
+                resolver,
+                limit_runtime,
+                pending_alerts,
+                app.handle().clone(),
+            );
             Ok(())
         })
         .run(tauri::generate_context!())
