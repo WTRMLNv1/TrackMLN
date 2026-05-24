@@ -6,7 +6,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 use crate::app_names::looks_like_exe_path;
 use crate::db;
-use crate::models::{AppSettings, AppTotal, Goal, GoalCandidate, GoalDraft, HourlyData, WeekData};
+use crate::models::{AppSettings, AppTotal, Goal, GoalAlertPayload, GoalCandidate, GoalDraft, HourlyData, WeekData};
 use crate::settings;
 use crate::AppState;
 
@@ -131,6 +131,19 @@ pub fn delete_goal(state: State<AppState>, goal_id: i64) -> Result<Vec<Goal>, St
 pub fn snooze_goal(state: State<AppState>, goal_id: i64, minutes: u32) -> Result<(), String> {
     let mut runtime = state.limit_runtime.lock().map_err(|err| err.to_string())?;
     runtime.snooze(goal_id, minutes as i64);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_pending_alert(state: State<AppState>, label: String) -> Result<Option<GoalAlertPayload>, String> {
+    let pending_alerts = state.pending_alerts.lock().map_err(|err| err.to_string())?;
+    Ok(pending_alerts.get(label.as_str()).cloned())
+}
+
+#[tauri::command]
+pub fn clear_pending_alert(state: State<AppState>, label: String) -> Result<(), String> {
+    let mut pending_alerts = state.pending_alerts.lock().map_err(|err| err.to_string())?;
+    pending_alerts.remove(label.as_str());
     Ok(())
 }
 

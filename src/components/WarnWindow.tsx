@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
@@ -15,10 +16,24 @@ export function WarnWindow() {
   useEffect(() => {
     let dispose: (() => void) | undefined;
 
-    void listen<GoalAlertPayload>("warn-alert", (event) => {
-      setAlert(event.payload);
+    const showAlert = (payload: GoalAlertPayload) => {
+      setAlert(payload);
       setInstanceKey((value) => value + 1);
       setVisible(true);
+    };
+
+    void invoke<GoalAlertPayload | null>("get_pending_alert", { label: "warn" })
+      .then((payload) => {
+        if (payload) {
+          showAlert(payload);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch pending warn alert", error);
+      });
+
+    void listen<GoalAlertPayload>("warn-alert", (event) => {
+      showAlert(event.payload);
     })
       .then((unlisten) => {
         dispose = unlisten;
@@ -48,6 +63,9 @@ export function WarnWindow() {
 
   function dismiss() {
     setVisible(false);
+    void invoke("clear_pending_alert", { label: "warn" }).catch((error) => {
+      console.error("Failed to clear pending warn alert", error);
+    });
     void appWindow.hide();
   }
 

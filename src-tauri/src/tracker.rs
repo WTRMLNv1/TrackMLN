@@ -63,6 +63,7 @@ pub fn start_tracker(
     db: SharedDb,
     app_name_resolver: Arc<Mutex<AppNameResolver>>,
     limit_runtime: Arc<Mutex<LimitRuntime>>,
+    pending_alerts: Arc<Mutex<HashMap<String, GoalAlertPayload>>>,
     app_handle: AppHandle,
 ) {
     // Spin up the power monitor on its own thread (needs its own message loop)
@@ -71,7 +72,13 @@ pub fn start_tracker(
     });
 
     thread::spawn(move || {
-        let mut tracker = Tracker::new(db, app_name_resolver, limit_runtime, app_handle);
+        let mut tracker = Tracker::new(
+            db,
+            app_name_resolver,
+            limit_runtime,
+            pending_alerts,
+            app_handle,
+        );
         tracker.run();
     });
 }
@@ -150,6 +157,7 @@ struct Tracker {
     db: SharedDb,
     app_name_resolver: Arc<Mutex<AppNameResolver>>,
     limit_runtime: Arc<Mutex<LimitRuntime>>,
+    pending_alerts: Arc<Mutex<HashMap<String, GoalAlertPayload>>>,
     app_handle: AppHandle,
     current_identity: Option<String>,
     current_exe_name: Option<String>,
@@ -163,12 +171,14 @@ impl Tracker {
         db: SharedDb,
         app_name_resolver: Arc<Mutex<AppNameResolver>>,
         limit_runtime: Arc<Mutex<LimitRuntime>>,
+        pending_alerts: Arc<Mutex<HashMap<String, GoalAlertPayload>>>,
         app_handle: AppHandle,
     ) -> Self {
         Self {
             db,
             app_name_resolver,
             limit_runtime,
+            pending_alerts,
             app_handle,
             current_identity: None,
             current_exe_name: None,
@@ -368,7 +378,7 @@ impl Tracker {
             // first time annoy shown
             let mut shown_this_iteration = false;
             {
-                let mut state = runtime.goal_states.entry(goal.id).or_default();
+                let state = runtime.goal_states.entry(goal.id).or_default();
                 if state.annoy_shown_on.is_none() {
                     state.annoy_shown_on = Some(today_key.clone());
                     state.last_annoy_notification_at = Some(now.timestamp());
@@ -398,7 +408,7 @@ impl Tracker {
 
             if should_repeat {
                 {
-                    let mut state = runtime.goal_states.entry(goal.id).or_default();
+                    let state = runtime.goal_states.entry(goal.id).or_default();
                     state.last_annoy_notification_at = Some(now.timestamp());
                 }
                 let snooze_count = runtime.snooze_counts.get(&goal.id).copied().unwrap_or(0);
@@ -493,6 +503,7 @@ impl Tracker {
             return;
         };
 
+        self.store_pending_alert("warn", payload.clone());
         self.play_alert_sound("warn");
         self.position_warn_window(&window);
         let _ = window.show();
@@ -521,12 +532,19 @@ impl Tracker {
             return;
         };
 
+        self.store_pending_alert("annoy", payload.clone());
         self.play_alert_sound("annoy");
         self.position_annoy_window(&window);
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
         let _ = window.emit("annoy-alert", payload);
+    }
+
+    fn store_pending_alert(&self, label: &str, payload: GoalAlertPayload) {
+        if let Ok(mut pending_alerts) = self.pending_alerts.lock() {
+            pending_alerts.insert(label.to_string(), payload);
+        }
     }
 
     fn play_alert_sound(&self, threshold: &str) {

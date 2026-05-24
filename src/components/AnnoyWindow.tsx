@@ -35,14 +35,14 @@ export function AnnoyWindow() {
   useEffect(() => {
     let dispose: (() => void) | undefined;
 
-    void listen<GoalAlertPayload>("annoy-alert", (event) => {
+    const showAlert = (payload: GoalAlertPayload) => {
       const now = Date.now();
-      const sameGoal = lastGoalIdRef.current === event.payload.goalId;
+      const sameGoal = lastGoalIdRef.current === payload.goalId;
       const shouldResetLock = !sameGoal || now - lastAlertAtRef.current > 1500;
 
-      lastGoalIdRef.current = event.payload.goalId;
+      lastGoalIdRef.current = payload.goalId;
       lastAlertAtRef.current = now;
-      setAlert(event.payload);
+      setAlert(payload);
       setBusy(false);
 
       if (shouldResetLock) {
@@ -51,6 +51,18 @@ export function AnnoyWindow() {
       }
 
       setInstanceKey((v) => v + 1);
+    };
+
+    void invoke<GoalAlertPayload | null>("get_pending_alert", { label: "annoy" })
+      .then((payload) => {
+        if (payload) {
+          showAlert(payload);
+        }
+      })
+      .catch((error) => { console.error("Failed to fetch pending annoy alert", error); });
+
+    void listen<GoalAlertPayload>("annoy-alert", (event) => {
+      showAlert(event.payload);
     })
       .then((unlisten) => { dispose = unlisten; })
       .catch((error) => { console.error("Failed to subscribe to annoy alerts", error); });
@@ -90,13 +102,19 @@ export function AnnoyWindow() {
     }
   };
 
-  const dismiss = () => void hide();
+  const dismiss = () => {
+    void invoke("clear_pending_alert", { label: "annoy" }).catch((error) => {
+      console.error("Failed to clear pending annoy alert", error);
+    });
+    void hide();
+  };
 
   const snooze = async () => {
     if (!alert) return;
     setBusy(true);
     try {
       await invoke("snooze_goal", { goalId: alert.goalId, minutes: snoozeMinutes });
+      await invoke("clear_pending_alert", { label: "annoy" });
       unlockAtRef.current = null;
       await hide();
     } finally {
