@@ -248,6 +248,29 @@ select {
   animation: warn-slide-in 220ms ease-out;
 }
 
+.warn-toast__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(238, 242, 247, 0.6);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease;
+}
+
+.warn-toast__close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(238, 242, 247, 1);
+}
+
 .warn-toast__kicker,
 .annoy-screen__kicker {
   text-transform: uppercase;
@@ -271,6 +294,7 @@ select {
   color: rgba(238, 242, 247, 0.82);
   line-height: 1.45;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .annoy-shell {

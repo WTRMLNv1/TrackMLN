@@ -559,10 +559,12 @@ impl Tracker {
             return;
         };
 
-        let width = ((area.work.right - area.work.left) as f64 * 0.19).round().clamp(320.0, 460.0) as i32;
-        let height = ((area.work.bottom - area.work.top) as f64 * 0.14).round().clamp(150.0, 210.0) as i32;
+        let width = ((area.work.right - area.work.left) as f64 * 0.19).round().clamp(380.0, 500.0) as i32;
+        let height = ((area.work.bottom - area.work.top) as f64 * 0.14).round().clamp(200.0, 260.0) as i32;
         let x = area.work.right - width - 26;
         let y = area.work.bottom - height - 26;
+
+        eprintln!("position_warn_window: work={:?} w={} h={} x={} y={}", area.work, width, height, x, y);
 
         let _ = window.set_size(tauri::PhysicalSize::new(width as u32, height as u32));
         let _ = window.set_position(tauri::PhysicalPosition::new(x, y));

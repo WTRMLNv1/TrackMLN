@@ -8,10 +8,16 @@ import { formatLongDuration } from "../utils/format";
 const appWindow = getCurrentWindow();
 const AUTO_HIDE_MS = 5000;
 
+function setClickThrough(clickthrough: boolean) {
+  void invoke("set_warn_clickthrough", { clickthrough }).catch((error) => {
+    console.error("Failed to update warn clickthrough", error);
+  });
+}
+
 export function WarnWindow() {
   const [alert, setAlert] = useState<GoalAlertPayload | null>(null);
   const [instanceKey, setInstanceKey] = useState(0);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -20,6 +26,7 @@ export function WarnWindow() {
       setAlert(payload);
       setInstanceKey((value) => value + 1);
       setVisible(true);
+      setClickThrough(false);
     };
 
     void invoke<GoalAlertPayload | null>("get_pending_alert", { label: "warn" })
@@ -52,6 +59,8 @@ export function WarnWindow() {
       return;
     }
 
+  console.log("timer started, instanceKey=", instanceKey);
+
     const timeout = window.setTimeout(() => {
       dismiss();
     }, AUTO_HIDE_MS);
@@ -63,6 +72,7 @@ export function WarnWindow() {
 
   function dismiss() {
     setVisible(false);
+    setClickThrough(true);
     void invoke("clear_pending_alert", { label: "warn" }).catch((error) => {
       console.error("Failed to clear pending warn alert", error);
     });
