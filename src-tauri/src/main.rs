@@ -54,6 +54,7 @@ fn main() {
             commands::set_exe_labels,
             commands::get_pending_alert,
             commands::clear_pending_alert,
+            commands::set_warn_clickthrough,
         ])
         .on_window_event(handle_window_event)
         .setup(|app| {

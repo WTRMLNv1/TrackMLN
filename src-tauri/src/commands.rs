@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
@@ -145,6 +145,16 @@ pub fn clear_pending_alert(state: State<AppState>, label: String) -> Result<(), 
     let mut pending_alerts = state.pending_alerts.lock().map_err(|err| err.to_string())?;
     pending_alerts.remove(label.as_str());
     Ok(())
+}
+
+#[tauri::command]
+pub fn set_warn_clickthrough(app: AppHandle, clickthrough: bool) -> Result<(), String> {
+    let window = app
+        .get_webview_window("warn")
+        .ok_or_else(|| "warn window not found".to_string())?;
+    window
+        .set_ignore_cursor_events(clickthrough)
+        .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
