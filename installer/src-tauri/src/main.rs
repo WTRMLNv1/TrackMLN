@@ -8,6 +8,7 @@ use std::{
     process::Command,
 };
 use tauri::{AppHandle, Manager, WebviewWindow};
+use std::os::windows::process::CommandExt;
 
 const TRACKMLN_EXE_BYTES: &[u8] =
     include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "\\assets\\app\\TrackMLN.exe"));
@@ -170,18 +171,30 @@ fn launch_installed_app(installed_exe: &Path) -> Result<(), String> {
 }
 
 fn schedule_self_delete() -> Result<(), String> {
-    let current_exe = env::current_exe()
-        .map_err(|error| format!("failed to locate installer executable: {error}"))?;
-    let current_exe_str = current_exe.display().to_string();
-    let command = format!(
-        "ping 127.0.0.1 -n 3 > nul && del /f /q \"{}\"",
-        current_exe_str.replace('"', "\"\"")
-    );
+    use std::os::windows::process::CommandExt;
 
+    let current_exe = env::current_exe()
+        .map_err(|e| format!("failed to locate installer executable: {e}"))?;
+
+    // Spawn: cmd /c timeout 3 && del "path\to\exe"
+    // Pass as separate args to avoid ALL quoting/escaping issues
     Command::new("cmd")
-        .args(["/C", &command])
+        .args([
+            "/C",
+            "timeout",
+            "/t",
+            "3",
+            "/nobreak",
+            ">nul",
+            "&&",
+            "del",
+            "/f",
+            "/q",
+            current_exe.to_str().unwrap_or_default(),
+        ])
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn()
-        .map_err(|error| format!("failed to schedule installer self-delete: {error}"))?;
+        .map_err(|e| format!("failed to schedule installer self-delete: {e}"))?;
 
     Ok(())
 }

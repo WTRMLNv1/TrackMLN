@@ -37,7 +37,7 @@ export function Sidebar({ activeTab, onChange }: SidebarProps) {
 
       <div className="sidebar__footer">
         <span>Version</span>
-        <strong>v1.2.1-snapshot.1</strong>
+        <strong>v1.2.1</strong>
       </div>
     </aside>
   );

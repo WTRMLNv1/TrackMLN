@@ -4,408 +4,349 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body,
-#root {
+html, body, #root {
   height: 100%;
   margin: 0;
   background: transparent;
-}
-
-body {
   overflow: hidden;
 }
 
-button,
-input {
-  font: inherit;
-}
+button, input { font: inherit; }
+button { border: 0; cursor: pointer; }
 
-button {
-  border: 0;
-}
-
-.installer-shell {
+/* ─── Shell ──────────────────────────────────────────── */
+.shell {
   position: relative;
   height: 100%;
   background:
-    radial-gradient(circle at top, rgba(214, 224, 238, 0.09), transparent 38%),
-    radial-gradient(circle at 82% 18%, rgba(215, 192, 154, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(10, 12, 18, 0.28), rgba(15, 18, 24, 0.38));
+    radial-gradient(circle at top,    rgba(214,224,238,.09), transparent 38%),
+    radial-gradient(circle at 82% 18%, rgba(215,192,154,.08), transparent 24%),
+    linear-gradient(180deg, rgba(10,12,18,.28), rgba(15,18,24,.38));
 }
 
-.installer-shell__backdrop {
+.shell__backdrop {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent 35%),
-    radial-gradient(circle at 16% 8%, rgba(135, 162, 160, 0.12), transparent 30%),
-    radial-gradient(circle at 84% 88%, rgba(216, 142, 157, 0.1), transparent 24%);
   pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.05), transparent 35%),
+    radial-gradient(circle at 16%  8%, rgba(135,162,160,.12), transparent 30%),
+    radial-gradient(circle at 84% 88%, rgba(216,142,157,.10), transparent 24%);
 }
 
-.installer-window {
+/* ─── Window ─────────────────────────────────────────── */
+.window {
   position: relative;
   z-index: 1;
-  width: calc(100vw - 24px);
-  height: calc(100vh - 24px);
-  margin: 12px auto;
-  border-radius: 34px;
-  padding: 18px;
-  background: rgba(9, 11, 16, 0.26);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  width:  calc(100vw - 20px);
+  height: calc(100vh - 20px);
+  margin: 10px auto;
+  border-radius: 28px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(9,11,16,.28);
+  border: 1px solid rgba(255,255,255,.13);
   box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(34px) saturate(145%);
+    0 20px 50px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter: blur(32px) saturate(140%);
 }
 
+/* ─── Titlebar ───────────────────────────────────────── */
 .titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 60px;
-  padding: 4px 6px 18px;
+  padding: 2px 4px 12px;
+  gap: 12px;
   user-select: none;
-  gap: 16px;
-}
-
-.titlebar__drag-region {
-  flex: 1;
-  min-width: 0;
   cursor: grab;
+  flex-shrink: 0;
 }
 
-.titlebar__eyebrow,
-.sidebar__eyebrow,
-.card-kicker,
-.detail-tile span,
-.sidebar-panel span {
-  display: inline-block;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 11px;
-  color: #9ea6b2;
-}
+.titlebar__brand { min-width: 0; }
 
-.titlebar strong {
+.eyebrow {
   display: block;
-  margin-top: 8px;
-  font-size: 24px;
-  letter-spacing: -0.03em;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: #7e8896;
+}
+
+.titlebar__title {
+  display: block;
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.03em;
 }
 
 .titlebar__actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   cursor: default;
 }
 
 .titlebar__actions button {
-  padding: 10px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e5e9f0;
-  cursor: pointer;
-  transition: background 180ms ease, transform 180ms ease;
-}
-
-.titlebar__actions button:hover,
-.primary-action:hover {
-  transform: translateY(-1px);
-}
-
-.titlebar__actions button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.installer-layout {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: #c8cdd6;
+  font-size: 12px;
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 18px;
-  height: calc(100% - 78px);
+  place-items: center;
+  transition: background 160ms, transform 160ms;
+}
+
+.titlebar__actions button:hover { background: rgba(255,255,255,.11); transform: translateY(-1px); }
+.btn-close:hover { background: rgba(200,80,80,.25) !important; color: #f87171; }
+
+/* ─── Body ───────────────────────────────────────────── */
+.body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  flex: 1;
   min-height: 0;
 }
 
-.glass-card {
-  background: rgba(20, 22, 28, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(34px) saturate(145%);
-  border-radius: 28px;
+/* ─── Info col ───────────────────────────────────────── */
+.info-col {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 20px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   overflow: hidden;
 }
 
-.installer-sidebar {
-  padding: 24px 16px 24px 24px; /* was 24px 20px 24px 24px, reduce right padding */
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 22px;
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
-}
-
-.installer-sidebar h1,
-.card-header h2 {
-  margin: 10px 0 0;
-  font-size: 34px;
+.info-col h1 {
+  margin: 0;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -.03em;
 }
 
-.installer-sidebar p,
-.card-header p,
-.status-panel p {
-  margin: 12px 0 0;
-  color: #b8bec7;
+.info-col p {
+  margin: 0;
+  font-size: 12px;
+  color: #8a929e;
   line-height: 1.55;
-  font-size: 14px;
 }
 
-.sidebar-panel {
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.sidebar-panel ul {
-  margin: 14px 0 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 10px;
-  color: #d6dbe3;
-}
-
-.installer-card {
-  padding: 30px;
+.checklist {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  overflow: auto;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+  gap: 7px;
 }
 
-.card-header {
-  max-width: 640px;
+.checklist li {
+  font-size: 12px;
+  color: #b0b8c4;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
 }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(220px, 0.8fr) minmax(220px, 0.8fr);
-  gap: 14px;
-  align-items: stretch;
+.checklist li::before {
+  content: "✓";
+  font-size: 10px;
+  color: #89a785;
+  flex-shrink: 0;
 }
 
-.detail-tile {
-  padding: 18px;
+.checklist code {
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  color: #c8cdd6;
+}
+
+/* ─── Action col ─────────────────────────────────────── */
+.action-col {
+  background: rgba(18,20,26,.22);
+  border: 1px solid rgba(255,255,255,.11);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.045);
-  min-width: 0;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
 }
 
-.detail-tile strong {
+.action-col::-webkit-scrollbar { width: 4px; }
+.action-col::-webkit-scrollbar-track { background: transparent; margin-block: 8px; }
+.action-col::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.16);
+  border-radius: 999px;
+}
+
+.action-col__header h2 {
+  margin: 6px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+
+.action-col__header p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #8a929e;
+  line-height: 1.5;
+}
+
+/* ─── Tiles ──────────────────────────────────────────── */
+.tile {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tile--meta strong {
   display: block;
-  margin-top: 12px;
-  font-size: 16px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
+  margin-top: 8px;
+  font-size: 13px;
 }
 
+/* ─── Path row ───────────────────────────────────────── */
 .path-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .path-field {
   flex: 1;
   min-width: 0;
-  min-height: 76px;
   resize: none;
   border: 0;
   outline: 0;
-  border-radius: 14px;
-  padding: 12px 14px;
-  color: #f3f6fb;
-  background: rgba(255, 255, 255, 0.06);
-  line-height: 1.45;
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: #e8ecf2;
+  background: rgba(255,255,255,.06);
+  font-size: 12px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  scrollbar-width: none;
 }
 
-.copy-action {
-  flex: 0 0 auto;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #f3f6fb;
-  cursor: pointer;
-  transition: background 180ms ease, transform 180ms ease;
+.btn-copy {
+  flex-shrink: 0;
+  padding: 9px 13px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  color: #e8ecf2;
+  font-size: 12px;
+  transition: background 160ms, transform 160ms;
 }
+.btn-copy:hover { background: rgba(255,255,255,.13); transform: translateY(-1px); }
 
-.copy-action:hover {
-  background: rgba(255, 255, 255, 0.12);
-  transform: translateY(-1px);
-}
-
-.installer-option {
+/* ─── Option ─────────────────────────────────────────── */
+.option {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.045);
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
   width: fit-content;
   cursor: pointer;
-  color: #e1e6ed;
+  font-size: 13px;
+  color: #c8cdd6;
 }
 
-.installer-option input {
-  width: 18px;
-  height: 18px;
+.option input {
+  width: 16px;
+  height: 16px;
   accent-color: #89a785;
 }
 
-.actions {
-  margin-top: auto;
+/* ─── CTA ────────────────────────────────────────────── */
+.cta-row {
   display: flex;
   align-items: flex-start;
-  gap: 18px;
+  gap: 14px;
+  margin-top: auto;
+  flex-wrap: wrap;
 }
 
-.actions--with-status {
-  align-items: flex-start;
-}
-
-.primary-action {
-  flex: 0 0 auto;
-  min-width: 190px;
-  padding: 16px 22px;
-  border-radius: 18px;
-  cursor: pointer;
+.btn-install {
+  flex-shrink: 0;
+  min-width: 160px;
+  padding: 13px 20px;
+  border-radius: 14px;
   color: #101319;
   font-weight: 700;
+  font-size: 14px;
   background: linear-gradient(135deg, #d6c7a6, #89a785);
-  transition: transform 180ms ease, filter 180ms ease, opacity 180ms ease;
+  transition: transform 180ms, filter 180ms, opacity 180ms;
 }
 
-.primary-action:disabled {
-  cursor: wait;
-  opacity: 0.8;
-}
+.btn-install:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); }
+.btn-install:disabled { opacity: .7; cursor: wait; }
 
+/* ─── Status panels ──────────────────────────────────── */
 .status-panel {
-  padding: 18px 20px;
-  border-radius: 22px;
-  max-width: 100%;
-  overflow: auto;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+  padding: 13px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 180px;
 }
 
-.status-panel strong {
-  font-size: 16px;
-}
+.status-panel strong { font-size: 14px; }
 
-.status-panel__message,
-.status-panel code {
+.status-panel p {
+  margin: 6px 0 0;
+  color: #b0b8c4;
+  line-height: 1.5;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .status-panel--success {
-  background: rgba(120, 170, 135, 0.12);
-  border: 1px solid rgba(140, 198, 156, 0.26);
+  background: rgba(120,170,135,.12);
+  border: 1px solid rgba(140,198,156,.24);
 }
 
 .status-panel--error {
-  background: rgba(173, 92, 92, 0.14);
-  border: 1px solid rgba(211, 122, 122, 0.28);
-}
-
-.status-panel--inline {
-  flex: 1;
-  min-height: 132px;
+  background: rgba(173,92,92,.14);
+  border: 1px solid rgba(211,122,122,.26);
 }
 
 code {
-  font-family: "Cascadia Code", "Consolas", monospace;
-  color: #f3f6fb;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  color: #d6dbe3;
 }
 
-.installer-sidebar::-webkit-scrollbar,
-.installer-card::-webkit-scrollbar,
-.status-panel::-webkit-scrollbar {
-  width: 4px;
-}
-
-.installer-sidebar::-webkit-scrollbar-button,
-.installer-card::-webkit-scrollbar-button,
-.status-panel::-webkit-scrollbar-button {
-  display: none;
-}
-
-.installer-sidebar::-webkit-scrollbar-track,
-.installer-card::-webkit-scrollbar-track,
-.status-panel::-webkit-scrollbar-track {
-  background: transparent;
-  margin-block: 10px;
-}
-
-.installer-sidebar::-webkit-scrollbar-thumb,
-.installer-card::-webkit-scrollbar-thumb,
-.status-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
-}
-
-.installer-sidebar::-webkit-scrollbar-thumb:hover,
-.installer-card::-webkit-scrollbar-thumb:hover,
-.status-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-@media (max-width: 900px) {
-  .installer-window {
-    padding: 14px;
-  }
-
-  .installer-layout {
-    grid-template-columns: 1fr;
-    height: auto;
-    overflow: auto;
-    padding-bottom: 8px;
-  }
-
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .path-row {
-    flex-direction: column;
-  }
-
-  .actions,
-  .actions--with-status {
-    flex-direction: column;
-  }
+/* ─── Responsive ─────────────────────────────────────── */
+@media (max-width: 760px) {
+  .body { grid-template-columns: 1fr; }
+  .info-col { display: none; }
 }
