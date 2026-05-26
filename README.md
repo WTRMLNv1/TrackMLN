@@ -1,17 +1,8 @@
 # TrackMLN
 A Melogne Studio project.
-
 <p align="left">
-  <a href="https://github.com/MelogneStudio">
-    <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/studio-badge.svg" height="40">
-  </a>
-    <a href="https://www.virustotal.com/gui/file/1ca671454ac6d9a414c5477010321a880ca6871c753588eb768c9f49e79e3697">
-    <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/virustotal-badge.svg" height="40">
-  </a>
+  <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/studio-badge.svg" height="40">
 </p>
-
-
-
 <p align="left">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/OS-badge.svg" height="30">
   <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/version-badge.svg" height="30">
@@ -26,9 +17,9 @@ A Melogne Studio project.
 
 TrackMLN is a Windows desktop app for lightweight screen-time tracking.
 
-It runs as a Tauri app with a React frontend, watches the currently focused window, logs usage locally, and shows the data in a full-screen glass-style dashboard you can toggle with a global shortcut.
+It runs as a Tauri app with a React frontend, watches the currently focused window, logs usage locally, and shows the data in a full-screen glass-style dashboard you can toggle with a global shortcut. Now with screen time limits that will personally bother you until you close YouTube.
 
-### ⚠️Common "bugs" for people who don't read the readme and go straight to downloading
+### ⚠️ Common "bugs" for people who don't read the readme and go straight to downloading
 1. **Does not** open directly by clicking it through windows start menu. **Use Hotkey or system tray** Control + Shift + Space
 2. It is **NOT** a virus. It costs money and alot of time to buy a certificate to stop that from happening, as a hobby dev, I cannot buy that.
 
@@ -47,6 +38,7 @@ It runs as a Tauri app with a React frontend, watches the currently focused wind
   - most-used apps across the last 7 days
   - daily usage trend vs current and previous week averages
   - per-day app breakdown
+- `Goals` tab for setting per-app screen time limits with two escalating alert modes (more below)
 - `Settings` screen for changing the global shortcut, adjusting glass blur/opacity strength, and customizing app names
 - Two visual modes: **Mica** (default — minimalist, zero GPU) and **Liquid Glass** (more depth and animation, negligibly low GPU)
 - Runs from the system tray, show/hide with a hotkey (`Ctrl + Shift + Space` by default)
@@ -59,7 +51,7 @@ Just want it now? Click the download button
 Or grab it from the Releases page — look for `trackmln-installer-v1.x.x.exe` in the Assets section.
 
 <p align="left">
-  <a href="https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.0/trackmln-installer-v1.2.0.exe">
+  <a href="https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.1/trackmln-installer-v1.2.1.exe">
     <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/download_button.svg" height="30">
   </a>
 </p>
@@ -90,6 +82,13 @@ To disable auto-startup: `Settings → Apps → Startup Apps → TrackMLN → Of
 > ⚠️ Not recommended — you'll have to launch it manually every time, which kind of defeats the purpose.
 
 ## What's New
+
+### v1.2.1
+- Added `Goals` tab with per-app screen time limits
+- Added **Warn** alert — a small popup at the bottom of the screen when you hit your warn time
+- Added **Annoy** alert — a full-screen popup with a 5-second cooldown on dismiss that appears when you hit your annoy time. Dismiss makes it go away for 10 minutes. Snooze time shrinks every time you snooze it. You did this to yourself.
+- Updated installer layout
+- Fixed installer not deleting itself after install (it said it would. it didn't. now it does.)
 
 ### v1.2.0
 - Added editable app name labels in `Settings`, so exe-based names can now be customized without changing tracked history
@@ -178,7 +177,14 @@ TrackMLN is intentionally local and simple for now.
 
 - All data stays on your machine — no accounts, no cloud sync
 - Windows-only because the tracker uses Windows APIs to read the active foreground process
-- There's already a `goals` table and limit checks in the backend, but the UI for managing goals isn't exposed yet — it'll get there, i hope
+- Goals and limit enforcement are now live
+
+## How Screen Time Limits Work
+
+Set per-app limits in the `Goals` tab. Each app can have two thresholds:
+
+- **Warn time** — a small popup appears at the bottom of the screen. Gentle. Informative. Easy to ignore.
+- **Annoy time** — a full-screen popup takes over with a 5-second cooldown before you can do anything about it. Dismiss hides it for 10 minutes. Snooze is also an option, but the snooze window shrinks every time you use it. You set this limit. You did this.
 
 ## Tech Stack
 
@@ -217,15 +223,14 @@ Idle and unknown windows are filtered out of the dashboard views.
 
 ## Known Bugs
 
-I haven't found any major bugs in v1.2.0 yet. If something explodes, please open an issue. :')
-
+There are some small bugs in screen time limits, visual and slightly functional. I am trying to fix them by next update.
+If anything explodes, report a bug :,)
 
 <p align="left">
   <a href="https://github.com/WTRMLNv1/TrackMLN/issues">
     <img src="https://github.com/WTRMLNv1/WTRMLNv1/blob/main/TrackMLN-assets/badges/report-a-bug.svg" height="30">
   </a>
 </p>
-
 
 ## Local Data
 
@@ -242,8 +247,8 @@ TrackMLN stores everything in the Tauri app data directory:
 
 ## Planned
 
-- In-app goal editing UI (backend already has it, UI doesn't yet)
-- Notifications and limit enforcement (same deal)
+- Notifications and limit enforcement sounds/escalation
+- macOS support (buy me a Mac)
 
 ## Known Limitations
 
