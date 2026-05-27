@@ -31,6 +31,7 @@ use crate::db::{self, SharedDb};
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const MAX_SESSION_GAP: Duration = Duration::from_secs(4);
 const ANNOY_REPEAT_INTERVAL_MINUTES: i64 = 10;
+const SNOOZE_DURATIONS_MINUTES: [i64; 3] = [5, 3, 1];
 
 // Shared flag — true = screen is on, false = screen is off
 static SCREEN_ON: AtomicBool = AtomicBool::new(true);
@@ -57,6 +58,11 @@ impl LimitRuntime {
         state.last_annoy_notification_at = None;
         *self.snooze_counts.entry(goal_id).or_insert(0) += 1;
     }
+}
+
+fn snooze_minutes_for_count(snooze_count: u32) -> i64 {
+    let index = (snooze_count as usize).min(SNOOZE_DURATIONS_MINUTES.len() - 1);
+    SNOOZE_DURATIONS_MINUTES[index]
 }
 
 pub fn start_tracker(
@@ -466,7 +472,7 @@ impl Tracker {
             threshold: threshold.to_string(),
             total_seconds,
             threshold_seconds,
-            repeat_minutes: ANNOY_REPEAT_INTERVAL_MINUTES,
+            repeat_minutes: snooze_minutes_for_count(snooze_count),
             show_overlay: threshold == "annoy",
             snooze_count,
         };

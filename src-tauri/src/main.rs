@@ -15,6 +15,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{
+    Emitter,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, Window, WindowEvent,
@@ -173,6 +174,8 @@ fn handle_window_event(window: &Window, event: &WindowEvent) {
             api.prevent_close();
             if label == "main" {
                 let _ = window.minimize();
+            } else if label == "annoy" {
+                let _ = window.emit("annoy-close-requested", ());
             } else {
                 let _ = window.hide();
             }
@@ -230,6 +233,18 @@ fn configure_warn_window(window: &WebviewWindow) -> Result<(), Box<dyn Error>> {
 }
 
 fn configure_alert_window(window: &WebviewWindow) -> Result<(), Box<dyn Error>> {
+    if let Some(monitor) = window.current_monitor()? {
+        let monitor_size = monitor.size();
+        let monitor_position = monitor.position();
+
+        window.set_position(PhysicalPosition::new(
+            monitor_position.x,
+            monitor_position.y,
+        ))?;
+        window.set_size(PhysicalSize::new(monitor_size.width, monitor_size.height))?;
+    }
+
+    window.set_fullscreen(true)?;
     window.set_resizable(false)?;
     window.set_always_on_top(true)?;
     window.set_skip_taskbar(true)?;
