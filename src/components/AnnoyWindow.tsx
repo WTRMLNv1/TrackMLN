@@ -7,30 +7,53 @@ import { formatLongDuration } from "../utils/format";
 
 const appWindow = getCurrentWindow();
 
-const DISMISS_DELAY_SECONDS = 5;
 const SNOOZE_DURATIONS = [5, 3, 1];
 const MESSAGES = [
-  { heading: (l: string) => `${l} is officially a problem.`, sub: "You crossed your threshold." },
-  { heading: (_: string) => `Still here?`,                   sub: "Okay so you snoozed. Bold." },
-  { heading: (_: string) => `Genuinely impressive.`,         sub: "This is snooze #3." },
-  { heading: (_: string) => `No more snoozes.`,              sub: "Touch grass." },
+  {
+    heading: (label: string) => `${label} is officially a problem.`,
+    sub: (_snoozeNumber: number) => "You crossed your threshold."
+  },
+  {
+    heading: (label: string) => `Still on ${label}?`,
+    sub: (_snoozeNumber: number) => "Touch grass."
+  },
+  {
+    heading: (label: string) => `${label}. Again.`,
+    sub: (snoozeNumber: number) => `This is snooze #${snoozeNumber}.`
+  },
 ];
+
+function getSnoozeMinutes(snoozeCount: number) {
+  return SNOOZE_DURATIONS[Math.min(snoozeCount, SNOOZE_DURATIONS.length - 1)];
+}
 
 export function AnnoyWindow() {
   const [alert, setAlert] = useState<GoalAlertPayload | null>(null);
-  const [countdown, setCountdown] = useState(0);
   const [busy, setBusy] = useState(false);
   const [instanceKey, setInstanceKey] = useState(0);
+  const [messageIndex, setMessageIndex] = useState(0);
   const [drifted, setDrifted] = useState(false);
   const [snoozeReady, setSnoozeReady] = useState(false);
-  const unlockAtRef = useRef<number | null>(null);
   const lastAlertAtRef = useRef(0);
   const lastGoalIdRef = useRef<number | null>(null);
+  const closeActionRef = useRef({
+    alert: null as GoalAlertPayload | null,
+    busy: false,
+    snoozeMinutes: SNOOZE_DURATIONS[0],
+    snoozeReady: false
+  });
 
   const snoozeCount = alert?.snoozeCount ?? 0;
-  const snoozeMinutes = SNOOZE_DURATIONS[Math.min(snoozeCount, SNOOZE_DURATIONS.length - 1)];
-  const showSnooze = snoozeCount < SNOOZE_DURATIONS.length;
-  const msg = MESSAGES[Math.min(snoozeCount, MESSAGES.length - 1)];
+  const snoozeNumber = snoozeCount + 1;
+  const snoozeMinutes = getSnoozeMinutes(snoozeCount);
+  const msg = MESSAGES[messageIndex];
+
+  closeActionRef.current = {
+    alert,
+    busy,
+    snoozeMinutes,
+    snoozeReady
+  };
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -38,19 +61,17 @@ export function AnnoyWindow() {
     const showAlert = (payload: GoalAlertPayload) => {
       const now = Date.now();
       const sameGoal = lastGoalIdRef.current === payload.goalId;
-      const shouldResetLock = !sameGoal || now - lastAlertAtRef.current > 1500;
+      const shouldRefresh = !sameGoal || now - lastAlertAtRef.current > 1500;
 
       lastGoalIdRef.current = payload.goalId;
       lastAlertAtRef.current = now;
       setAlert(payload);
       setBusy(false);
 
-      if (shouldResetLock) {
-        unlockAtRef.current = now + DISMISS_DELAY_SECONDS * 1000;
-        setCountdown(DISMISS_DELAY_SECONDS);
+      if (shouldRefresh) {
+        setMessageIndex(Math.floor(Math.random() * MESSAGES.length));
+        setInstanceKey((v) => v + 1);
       }
-
-      setInstanceKey((v) => v + 1);
     };
 
     void invoke<GoalAlertPayload | null>("get_pending_alert", { label: "annoy" })
@@ -70,21 +91,6 @@ export function AnnoyWindow() {
     return () => { dispose?.(); };
   }, []);
 
-  // Countdown ticker
-  useEffect(() => {
-    if (!alert) return;
-
-    const tick = () => {
-      const unlockAt = unlockAtRef.current;
-      if (!unlockAt) { setCountdown(0); return; }
-      setCountdown(Math.ceil(Math.max(0, unlockAt - Date.now()) / 1000));
-    };
-
-    tick();
-    const interval = window.setInterval(tick, 200);
-    return () => window.clearInterval(interval);
-  }, [alert]);
-
   // Snooze-ready delay
   useEffect(() => {
     if (!alert) return;
@@ -102,25 +108,37 @@ export function AnnoyWindow() {
     }
   };
 
-  const dismiss = () => {
-    void invoke("clear_pending_alert", { label: "annoy" }).catch((error) => {
-      console.error("Failed to clear pending annoy alert", error);
-    });
-    void hide();
-  };
-
-  const snooze = async () => {
-    if (!alert) return;
+  const snoozeAlert = async (targetAlert: GoalAlertPayload, minutes: number) => {
+    closeActionRef.current.busy = true;
     setBusy(true);
     try {
-      await invoke("snooze_goal", { goalId: alert.goalId, minutes: snoozeMinutes });
+      await invoke("snooze_goal", { goalId: targetAlert.goalId, minutes });
       await invoke("clear_pending_alert", { label: "annoy" });
-      unlockAtRef.current = null;
       await hide();
     } finally {
+      closeActionRef.current.busy = false;
       setBusy(false);
     }
   };
+
+  const snooze = async () => {
+    if (!alert || busy || !snoozeReady) return;
+    await snoozeAlert(alert, snoozeMinutes);
+  };
+
+  useEffect(() => {
+    let dispose: (() => void) | undefined;
+
+    void listen("annoy-close-requested", () => {
+      const current = closeActionRef.current;
+      if (!current.alert || current.busy || !current.snoozeReady) return;
+      void snoozeAlert(current.alert, current.snoozeMinutes);
+    })
+      .then((unlisten) => { dispose = unlisten; })
+      .catch((error) => { console.error("Failed to subscribe to annoy close requests", error); });
+
+    return () => { dispose?.(); };
+  }, []);
 
   // Don't render content until an alert arrives — but keep the shell so
   // Tauri doesn't show a gray rectangle on first open
@@ -139,31 +157,21 @@ export function AnnoyWindow() {
         <p className="annoy-screen__lead">
           You are at {formatLongDuration(alert.totalSeconds)}. The hard threshold was {formatLongDuration(alert.thresholdSeconds)}.
         </p>
-        <p className="annoy-screen__lead">{msg.sub}</p>
+        <p className="annoy-screen__lead">{msg.sub(snoozeNumber)}</p>
         <p className="annoy-screen__lead">
-          This screen will keep coming back every {alert.repeatMinutes ?? 10} minutes until you stop or snooze it.
+          This screen will come back in {snoozeMinutes} minutes if you snooze it.
         </p>
 
         <div className="annoy-screen__actions">
-          {showSnooze && (
-            <button
-              className="settings-button settings-button--accent"
-              disabled={busy || !snoozeReady}
-              onClick={() => void snooze()}
-              onMouseEnter={() => { if (!drifted && snoozeCount > 0) setDrifted(true); }}
-              style={drifted ? { transform: "translate(8px, -4px)", transition: "transform 0.15s ease" } : {}}
-              type="button"
-            >
-              Snooze {snoozeMinutes} min
-            </button>
-          )}
           <button
-            className="settings-button"
-            disabled={busy || countdown > 0}
-            onClick={dismiss}
+            className="settings-button settings-button--accent"
+            disabled={busy || !snoozeReady}
+            onClick={() => void snooze()}
+            onMouseEnter={() => { if (!drifted && snoozeCount > 0) setDrifted(true); }}
+            style={drifted ? { transform: "translate(8px, -4px)", transition: "transform 0.15s ease" } : {}}
             type="button"
           >
-            {countdown > 0 ? `Dismiss in ${countdown}s` : "Dismiss"}
+            Snooze {snoozeMinutes} min
           </button>
         </div>
       </section>

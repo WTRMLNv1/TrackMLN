@@ -294,18 +294,22 @@ select {
   color: rgba(238, 242, 247, 0.82);
   line-height: 1.45;
   font-size: 14px;
-  white-space: nowrap;
 }
 
 .annoy-shell {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: fixed;
+  inset: 0;
   padding: 56px;
   background:
-    radial-gradient(circle at 50% 20%, rgba(255, 180, 140, 0.12), transparent 28%),
-    radial-gradient(circle at 50% 120%, rgba(154, 46, 46, 0.2), transparent 38%),
-    rgba(10, 10, 14, 0.78);
+    radial-gradient(circle at 50% 20%, rgba(255, 180, 140, 0.1), transparent 28%),
+    radial-gradient(circle at 50% 120%, rgba(154, 46, 46, 0.16), transparent 38%),
+    rgba(10, 10, 14, 0.34);
+  backdrop-filter: blur(34px) saturate(150%) brightness(0.9);
+  -webkit-backdrop-filter: blur(34px) saturate(150%) brightness(0.9);
+  -webkit-app-region: no-drag;
 }
 
 .annoy-shell__flash {
@@ -324,16 +328,19 @@ select {
   flex-direction: column;
   gap: 18px;
   background:
-    linear-gradient(135deg, rgba(255, 116, 116, 0.12), transparent 52%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%),
-    var(--surface-bg);
+    linear-gradient(135deg, rgba(255, 116, 116, 0.1), transparent 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42%),
+    rgba(20, 22, 28, 0.46);
+  backdrop-filter: blur(48px) saturate(160%) brightness(0.95);
+  -webkit-backdrop-filter: blur(48px) saturate(160%) brightness(0.95);
   animation: annoy-rise-in 220ms ease-out;
+  -webkit-app-region: no-drag;
 }
 
 .annoy-screen h1 {
   font-size: clamp(42px, 5vw, 72px);
   line-height: 0.98;
-  max-width: 12ch;
+  max-width: 18ch;
 }
 
 .annoy-screen__lead {
@@ -1421,8 +1428,8 @@ select {
 }
 
 .settings-modal-card--editor {
-  width: 440px;
-  height: 318px;
+  width: 520px;
+  height: 420px;
 }
 
 .settings-morph {
@@ -1489,8 +1496,9 @@ select {
 }
 
 .settings-modal--editor {
-  width: 440px;
-  min-height: 318px;
+  width: 520px;
+  min-height: 420px;
+  padding: 34px 34px 30px;
 }
 
 .settings-modal__header {
@@ -1620,33 +1628,53 @@ select {
 
 .settings-form {
   display: grid;
-  gap: 16px;
-  margin-top: 22px;
+  gap: 22px;
+  margin-top: 30px;
 }
 
 .settings-field {
+  display: grid;
+  gap: 10px;
+}
 
 
 .settings-field span {
   color: #cfd5dd;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .settings-field input {
   width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-top-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.055);
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid var(--button-border);
+  border-top-color: var(--button-border-top);
+  background: var(--button-bg);
   color: #f4f6f9;
   outline: none;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.07) inset,
+    0 10px 24px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(var(--button-blur)) saturate(var(--button-saturation)) brightness(var(--button-brightness));
+  -webkit-backdrop-filter: blur(var(--button-blur)) saturate(var(--button-saturation)) brightness(var(--button-brightness));
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.settings-field input::placeholder {
+  color: rgba(225, 231, 239, 0.46);
 }
 
 .settings-field input:focus {
   border-color: rgba(139, 244, 190, 0.42);
-  box-shadow: 0 0 0 1px rgba(139, 244, 190, 0.22);
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow:
+    0 0 0 1px rgba(139, 244, 190, 0.22),
+    0 14px 32px rgba(0, 0, 0, 0.18);
 }
 
 .settings-form__error {
@@ -1658,8 +1686,8 @@ select {
 .settings-modal__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 14px;
+  margin-top: 32px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1672,5 +1700,4 @@ select {
   .settings-icon-button {
     transition: none;
   }
-}
 }
