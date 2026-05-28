@@ -51,7 +51,7 @@ Just want it now? Click the download button
 Or grab it from the Releases page — look for `trackmln-installer-v1.x.x.exe` in the Assets section.
 
 <p align="left">
-  <a href="https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.1/trackmln-installer-v1.2.1.exe">
+  <a href="https://github.com/WTRMLNv1/TrackMLN/releases/download/v1.2.2/trackmln-installer-v1.2.2.exe">
     <img src="https://raw.githubusercontent.com/WTRMLNv1/WTRMLNv1/main/TrackMLN-assets/badges/download_button.svg" height="30">
   </a>
 </p>
@@ -82,6 +82,16 @@ To disable auto-startup: `Settings → Apps → Startup Apps → TrackMLN → Of
 > ⚠️ Not recommended — you'll have to launch it manually every time, which kind of defeats the purpose.
 
 ## What's New
+
+### v1.2.2
+- Alt+F4 is now blocked until the snooze button is available — no bailing out early
+- Alt+F4 now behaves like snooze instead of closing the window
+- Removed the dismiss button — snooze or nothing
+- Annoy window is now full-screen
+- Annoy window is no longer draggable
+- Snooze times adjusted to 5 min → 3 min → 1 min → forever
+- Annoy window messages are now randomised
+- Fixed default-looking text boxes in the Exe Labels modal [Glass version] to match Mica styling
 
 ### v1.2.1
 - Added `Goals` tab with per-app screen time limits
@@ -184,7 +194,7 @@ TrackMLN is intentionally local and simple for now.
 Set per-app limits in the `Goals` tab. Each app can have two thresholds:
 
 - **Warn time** — a small popup appears at the bottom of the screen. Gentle. Informative. Easy to ignore.
-- **Annoy time** — a full-screen popup takes over with a 5-second cooldown before you can do anything about it. Dismiss hides it for 10 minutes. Snooze is also an option, but the snooze window shrinks every time you use it. You set this limit. You did this.
+- **Annoy time** — a full-screen popup takes over. You can't move it, you can't Alt+F4 it, and there's a cooldown before you can do anything. Snooze is your only option, and the snooze window shrinks every time you use it: 5 min → 3 min → 1 min → forever. You set this limit. You did this.
 
 ## Tech Stack
 
